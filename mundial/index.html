@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>⚽ Mundial 2026 - App Oficial</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+    /* ========== TUS ESTILOS ORIGINALES (NO MODIFICADOS) ========== */
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0a2f3a 0%, #0a1f2a 100%); color: #fff; padding: 20px; min-height: 100vh; scroll-behavior: smooth; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 { font-size: 2.4rem; background: linear-gradient(135deg, #ffd966, #ffb347); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,180,70,0.4); }
+    .header p { font-size: 1rem; opacity: 0.9; }
+    .countdown { background: rgba(0,0,0,0.5); backdrop-filter: blur(15px); border-radius: 60px; display: inline-block; padding: 14px 28px; margin: 15px auto 0; text-align: center; border: 1px solid rgba(255,180,70,0.5); box-shadow: 0 0 20px rgba(255,180,70,0.4), inset 0 0 15px rgba(0,0,0,0.2); transition: transform 0.3s ease; }
+    .countdown:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(255,180,70,0.6); }
+    .countdown-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #ffb347; margin-bottom: 5px; }
+    .countdown-timer { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+    .countdown-unit { background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 20px; min-width: 70px; transition: transform 0.3s; }
+    .countdown-unit:hover { transform: scale(1.08); background: rgba(255,180,70,0.15); }
+    .countdown-number { font-size: 1.8rem; font-weight: bold; color: #ffb347; line-height: 1; }
+    .countdown-unit span:last-child { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
+    @media (max-width: 500px) { .countdown-unit { min-width: 55px; padding: 5px 8px; } .countdown-number { font-size: 1.3rem; } .countdown-timer { gap: 8px; } }
+    .last-update { font-size: 0.8rem; background: rgba(0,0,0,0.5); display: inline-block; padding: 5px 12px; border-radius: 20px; margin-top: 10px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; justify-content: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+    .tab-btn { background: rgba(255,255,255,0.1); border: none; padding: 10px 20px; border-radius: 30px; color: white; font-weight: bold; cursor: pointer; transition: all 0.3s ease; font-size: 0.9rem; backdrop-filter: blur(5px); border: 1px solid transparent; }
+    .tab-btn:hover { background: rgba(255,180,70,0.3); border-color: #ffb347; transform: translateY(-2px); }
+    .tab-btn.active { background: #ffb347; color: #1e2a32; box-shadow: 0 4px 15px rgba(255,180,70,0.5); border-color: #ffb347; }
+    .groups-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; justify-content: center; margin-bottom: 30px; }
+    .group-card { background: rgba(0,0,0,0.45); backdrop-filter: blur(15px); border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 20px rgba(0,0,0,0.3); transition: transform 0.3s, box-shadow 0.3s; }
+    .group-card:hover { transform: translateY(-6px); box-shadow: 0 15px 30px rgba(255,180,70,0.25); }
+    .group-header { background: #ffb347; color: #1e2a32; padding: 12px; font-weight: bold; font-size: 1.3rem; text-align: center; }
+    .teams-list { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px 10px; background: rgba(0,0,0,0.3); flex-wrap: wrap; }
+    .team-badge { background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 30px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(4px); transition: background 0.3s, transform 0.3s; }
+    .team-badge:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
+    .team-badge img { width: 26px; height: 18px; object-fit: cover; border-radius: 3px; }
+    .matches-list { padding: 15px; }
+    .match-item { background: rgba(255,255,255,0.05); margin-bottom: 12px; padding: 12px; border-radius: 12px; transition: all 0.25s; border: 1px solid transparent; }
+    .match-item:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,180,70,0.4); transform: translateX(5px); }
+    .match-teams { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.9rem; gap: 8px; flex-wrap: wrap; }
+    .team { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .team:first-child { justify-content: flex-start; }
+    .team:last-child { justify-content: flex-end; }
+    .team img { width: 28px; height: 20px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+    .team-name { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    @media (max-width: 600px) { .team-name { font-size: 0.90rem; white-space: normal; } .team img { width: 24px; height: 18px; } }
+    .score { font-weight: bold; background: #1e2a32; padding: 4px 12px; border-radius: 20px; min-width: 65px; text-align: center; font-size: 1rem; flex-shrink: 0; }
+    .match-info { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.7rem; color: #bbb; gap: 8px; flex-wrap: wrap; }
+    .status-badge { background: #2c5a6e; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; }
+    .status-badge.live { background: #e67e22; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .data-container { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-radius: 20px; padding: 18px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .data-table td, #fixtureContainer table td { border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .data-table th, #fixtureContainer table th { border-bottom: 2px solid rgba(255,180,70,0.5); }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .data-table th, .data-table td { padding: 10px 8px; text-align: center; }
+    .data-table th { background: rgba(0,0,0,0.5); color: #ffb347; font-weight: bold; }
+    .data-table tr { transition: background 0.2s; }
+    .data-table tbody tr:hover { background: rgba(255,255,255,0.05); }
+    .player-cell { display: flex; align-items: center; gap: 10px; }
+    .player-cell img { width: 24px; height: 18px; border-radius: 3px; }
+    @media (max-width: 600px) { .data-table { font-size: 0.75rem; } .data-table th, .data-table td { padding: 4px 2px; } .player-cell img { width: 16px; height: 11px; } }
+    .bracket-container { overflow-x: auto; padding: 20px 0; }
+    .bracket { display: flex; gap: 30px; min-width: min-content; justify-content: center; }
+    .round { background: rgba(0,0,0,0.4); border-radius: 20px; padding: 15px; backdrop-filter: blur(8px); min-width: 280px; }
+    .round h3 { text-align: center; margin-bottom: 15px; color: #ffb347; font-size: 1rem; }
+    .knockout-match { background: rgba(255,255,255,0.1); margin-bottom: 15px; padding: 12px; border-radius: 12px; }
+    .loading, .empty-message { text-align: center; padding: 40px; font-size: 1rem; color: #ccc; }
+    footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; }
+    .teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 15px; }
+    .about-content { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 25px; text-align: center; }
+    .about-content p { margin: 15px 0; line-height: 1.5; }
+    .phase-badge { display: inline-block; background: #ffb347; color: #1e2a32; border-radius: 20px; padding: 2px 10px; font-size: 0.7rem; margin-left: 8px; }
+    .fallback-widget { max-width: 600px; margin: 0 auto; }
+    .fixture-input { width: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,180,70,0.5); color: #fff; text-align: center; border-radius: 6px; padding: 4px; font-size: 0.8rem; }
+    .fixture-input:focus { outline: none; border-color: #ffb347; box-shadow: 0 0 5px rgba(255,180,70,0.5); }
+    .edit-controls { margin-bottom: 15px; text-align: center; }
+    .data-table { border-collapse: collapse; width: 100%; }
+    .data-table th, .data-table td { border: none; padding: 10px 8px; vertical-align: middle; text-align: center; }
+    .data-table td, .data-table th { border-right: 1px solid rgba(255,255,255,0.15); }
+    .data-table td:last-child, .data-table th:last-child { border-right: none; }
+    .data-table tr { border-bottom: 1px solid rgba(255,255,255,0.25); }
+    .data-table thead tr { border-bottom: 2px solid rgba(255,180,70,0.5); }
+    /* Estilos específicos para el fixture (mejora visual) */
+    #fixtureContainer table { 
+        border-collapse: collapse; 
+        width: 100%; 
+        min-width: 800px; 
+        white-space: nowrap;
+    }
+    #fixtureContainer table th, 
+    #fixtureContainer table td { 
+        border: none; 
+        padding: 8px 6px; 
+        vertical-align: middle; 
+        text-align: center;
+        white-space: nowrap;
+    }
+    #fixtureContainer table td, 
+    #fixtureContainer table th { 
+        border-right: 1px solid rgba(255,255,255,0.15); 
+    }
+    #fixtureContainer table td:last-child, 
+    #fixtureContainer table th:last-child { 
+        border-right: none; 
+    }
+    #fixtureContainer table tr { 
+        border-bottom: 1px solid rgba(255,255,255,0.25); 
+    }
+    #fixtureContainer table thead tr { 
+        border-bottom: 2px solid rgba(255,180,70,0.5); 
+    }
+    .scroll-hint {
+        font-size: 0.7rem;
+        text-align: right;
+        color: #ffb347;
+        margin-bottom: 5px;
+    }
+    .news-item { background: rgba(255,255,255,0.08); margin-bottom: 12px; padding: 12px; border-radius: 12px; transition: all 0.3s; border: 1px solid transparent; display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
+    .news-item:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,180,70,0.6); transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.5); }
+    .news-item img { border-radius: 8px; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #ffb347; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏆 Mundial 2026</h1>
+        <p>Actualización automática cada 60 segundos</p>
+        <div id="countdownContainer" class="countdown">
+            <div class="countdown-label">⚽ COMIENZA EN</div>
+            <div class="countdown-timer">
+                <div class="countdown-unit"><div class="countdown-number" id="days">00</div><span>días</span></div>
+                <div class="countdown-unit"><div class="countdown-number" id="hours">00</div><span>horas</span></div>
+                <div class="countdown-unit"><div class="countdown-number" id="minutes">00</div><span>min</span></div>
+                <div class="countdown-unit"><div class="countdown-number" id="seconds">00</div><span>seg</span></div>
+            </div>
+        </div>
+        <div style="background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border-radius: 40px; display: inline-block; padding: 10px 20px; margin: 10px auto 0; text-align: center; border: 1px solid rgba(255,180,70,0.5);">
+            <span style="color: #ffb347;">🎉 Ceremonia de Apertura 11/6 13:30</span>
+        </div>
+        <div class="last-update" id="lastUpdate">📅 Cargando datos...</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="groups">📋 Fase Grupos</button>
+        <button class="tab-btn" data-tab="knockout">🏆 Eliminatorias</button>
+        <button class="tab-btn" data-tab="news">📰 Noticias</button>
+        <button class="tab-btn" data-tab="results">✅ Resultados</button>
+        <button class="tab-btn" data-tab="fixture">📅 Fixture</button>
+        <button class="tab-btn" data-tab="about">ℹ️ Acerca de</button>
+    </div>
+
+    <div id="groupsPanel" class="panel active"><div class="groups-container" id="groupsContainer">⏳ Cargando fase de grupos...</div></div>
+    <div id="knockoutPanel" class="panel" style="display: none;"><div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div></div>
+    <div id="newsPanel" class="panel" style="display: none;"><div class="data-container" id="newsContainer">📰 Noticias...</div></div>
+    <div id="resultsPanel" class="panel" style="display: none;"><div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div></div>
+    <div id="fixturePanel" class="panel" style="display: none;">
+        <div class="edit-controls"><button id="editResultsBtn" class="tab-btn">✏️ Editar resultados</button><button id="saveResultsBtn" class="tab-btn" style="display:none;">💾 Guardar cambios</button></div>
+        <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
+        <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
+    </div>
+    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 60 segundos.</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
+    <footer>Datos oficiales vía football-data.org</footer>
+    <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
+</div>
+
+<script>
+// ==================== CONFIGURACIÓN ====================
+const FOOTBALL_DATA_KEY = "8cff69db270e4e4e9ea61503994ef780";
+const TIMEZONE = "America/La_Paz";
+const WORLD_CUP_START = new Date("2026-06-11T15:00:00-04:00");
+const COMPETITION_ID = "WC";
+
+// ----- PROXY CORS -----
+//const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
+//const BASE_API_URL = "https://api.football-data.org/v4";
+
+function apiFetch(endpoint) {
+  // Ahora llama a nuestro propio backend en Vercel
+  return fetch(`/api/${endpoint}`);
+}
+
+// ============ MAPEO DE NOMBRES ============
+const TEAM_MAP_REVERSE = {
+    "Mexico": "México", "South Africa": "Sudáfrica", "Korea Republic": "Corea del Sur", "South Korea": "Corea del Sur",
+    "Czech Republic": "República Checa", "Czechia": "República Checa", "Canada": "Canadá", "Bosnia": "Bosnia y Herzegovina",
+    "Bosnia-Herzegovina": "Bosnia y Herzegovina", "Qatar": "Catar", "Switzerland": "Suiza", "Brazil": "Brasil",
+    "Morocco": "Marruecos", "Haiti": "Haití", "Scotland": "Escocia", "USA": "Estados Unidos", "United States": "Estados Unidos",
+    "Paraguay": "Paraguay", "Australia": "Australia", "Turkey": "Turquía", "Germany": "Alemania", "Curacao": "Curazao",
+    "Curaçao": "Curazao", "Ivory Coast": "Costa de Marfil", "Ecuador": "Ecuador", "Netherlands": "Países Bajos",
+    "Japan": "Japón", "Sweden": "Suecia", "Tunisia": "Túnez", "Belgium": "Bélgica", "Egypt": "Egipto", "Iran": "Irán",
+    "New Zealand": "Nueva Zelanda", "Spain": "España", "Cape Verde": "Cabo Verde", "Cape Verde Islands": "Cabo Verde",
+    "Saudi Arabia": "Arabia Saudita", "Uruguay": "Uruguay", "France": "Francia", "Senegal": "Senegal", "Iraq": "Irak",
+    "Norway": "Noruega", "Argentina": "Argentina", "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
+    "Portugal": "Portugal", "Congo DR": "RD Congo", "Uzbekistan": "Uzbekistán", "Colombia": "Colombia",
+    "England": "Inglaterra", "Croatia": "Croacia", "Ghana": "Ghana", "Panama": "Panamá"
+};
+const TEAM_MAP = Object.fromEntries(Object.entries(TEAM_MAP_REVERSE).map(([k,v]) => [v, k]));
+
+// ============ FIXTURE OFICIAL FIFA 2026 (COMPLETO - 104 PARTIDOS) ============
+const OFFICIAL_MATCHES = [
+    { id: "A1", group: "A", homeTeam: "México", awayTeam: "Sudáfrica", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-11T15:00:00-04:00", stadium: "Estadio Ciudad de México" },
+    { id: "A2", group: "A", homeTeam: "Corea del Sur", awayTeam: "República Checa", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-11T22:00:00-04:00", stadium: "Estadio Guadalajara" },
+    { id: "B1", group: "B", homeTeam: "Canadá", awayTeam: "Bosnia y Herzegovina", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-12T15:00:00-04:00", stadium: "Estadio de Toronto" },
+    { id: "D1", group: "D", homeTeam: "Estados Unidos", awayTeam: "Paraguay", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-12T21:00:00-04:00", stadium: "Estadio Los Angeles" },
+    { id: "B2", group: "B", homeTeam: "Catar", awayTeam: "Suiza", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-13T15:00:00-04:00", stadium: "Estadio de la Bahía de San Francisco" },
+    { id: "C1", group: "C", homeTeam: "Brasil", awayTeam: "Marruecos", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-13T18:00:00-04:00", stadium: "Estadio Nueva York/Nueva Jersey" },
+    { id: "C2", group: "C", homeTeam: "Haití", awayTeam: "Escocia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-13T21:00:00-04:00", stadium: "Estadio Boston" },
+    { id: "D2", group: "D", homeTeam: "Australia", awayTeam: "Turquía", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-14T00:00:00-04:00", stadium: "Estadio BC Place Vancouver" },
+    { id: "E1", group: "E", homeTeam: "Alemania", awayTeam: "Curazao", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-14T13:00:00-04:00", stadium: "Estadio Houston" },
+    { id: "F1", group: "F", homeTeam: "Países Bajos", awayTeam: "Japón", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-14T16:00:00-04:00", stadium: "Estadio Dallas" },
+    { id: "E2", group: "E", homeTeam: "Costa de Marfil", awayTeam: "Ecuador", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-14T19:00:00-04:00", stadium: "Estadio Filadelfia" },
+    { id: "F2", group: "F", homeTeam: "Suecia", awayTeam: "Túnez", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-14T22:00:00-04:00", stadium: "Estadio Monterrey" },
+    { id: "H1", group: "H", homeTeam: "España", awayTeam: "Cabo Verde", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-15T12:00:00-04:00", stadium: "Estadio Atlanta" },
+    { id: "G1", group: "G", homeTeam: "Bélgica", awayTeam: "Egipto", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-15T15:00:00-04:00", stadium: "Estadio de Seattle" },
+    { id: "H2", group: "H", homeTeam: "Arabia Saudita", awayTeam: "Uruguay", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-15T18:00:00-04:00", stadium: "Estadio Miami" },
+    { id: "G2", group: "G", homeTeam: "Irán", awayTeam: "Nueva Zelanda", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-15T21:00:00-04:00", stadium: "Estadio Los Angeles" },
+    { id: "I1", group: "I", homeTeam: "Francia", awayTeam: "Senegal", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-16T15:00:00-04:00", stadium: "Estadio Nueva York/Nueva Jersey" },
+    { id: "I2", group: "I", homeTeam: "Irak", awayTeam: "Noruega", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-16T18:00:00-04:00", stadium: "Estadio Boston" },
+    { id: "J1", group: "J", homeTeam: "Argentina", awayTeam: "Argelia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-16T21:00:00-04:00", stadium: "Estadio Kansas City" },
+    { id: "J2", group: "J", homeTeam: "Austria", awayTeam: "Jordania", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-17T00:00:00-04:00", stadium: "Estadio de la Bahía de San Francisco" },
+    { id: "K1", group: "K", homeTeam: "Portugal", awayTeam: "RD Congo", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-17T13:00:00-04:00", stadium: "Estadio Houston" },
+    { id: "L1", group: "L", homeTeam: "Inglaterra", awayTeam: "Croacia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-17T16:00:00-04:00", stadium: "Estadio Dallas" },
+    { id: "L2", group: "L", homeTeam: "Ghana", awayTeam: "Panamá", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-17T19:00:00-04:00", stadium: "Estadio de Toronto" },
+    { id: "K2", group: "K", homeTeam: "Uzbekistán", awayTeam: "Colombia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-17T22:00:00-04:00", stadium: "Estadio Ciudad de México" },
+    { id: "A3", group: "A", homeTeam: "República Checa", awayTeam: "Sudáfrica", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-18T12:00:00-04:00", stadium: "Estadio Atlanta" },
+    { id: "B3", group: "B", homeTeam: "Suiza", awayTeam: "Bosnia y Herzegovina", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-18T15:00:00-04:00", stadium: "Estadio Los Angeles" },
+    { id: "B4", group: "B", homeTeam: "Canadá", awayTeam: "Catar", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-18T18:00:00-04:00", stadium: "Estadio BC Place Vancouver" },
+    { id: "A4", group: "A", homeTeam: "México", awayTeam: "Corea del Sur", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-18T21:00:00-04:00", stadium: "Estadio Guadalajara" },
+    { id: "D4", group: "D", homeTeam: "Estados Unidos", awayTeam: "Australia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-19T15:00:00-04:00", stadium: "Estadio de Seattle" },
+    { id: "C3", group: "C", homeTeam: "Escocia", awayTeam: "Marruecos", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-19T18:00:00-04:00", stadium: "Estadio Boston" },
+    { id: "C4", group: "C", homeTeam: "Brasil", awayTeam: "Haití", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-19T20:30:00-04:00", stadium: "Estadio Filadelfia" },
+    { id: "D3", group: "D", homeTeam: "Turquía", awayTeam: "Paraguay", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-19T23:00:00-04:00", stadium: "Estadio de la Bahía de San Francisco" },
+    { id: "F3", group: "F", homeTeam: "Países Bajos", awayTeam: "Suecia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-20T13:00:00-04:00", stadium: "Estadio Houston" },
+    { id: "E3", group: "E", homeTeam: "Alemania", awayTeam: "Costa de Marfil", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-20T16:00:00-04:00", stadium: "Estadio de Toronto" },
+    { id: "E4", group: "E", homeTeam: "Ecuador", awayTeam: "Curazao", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-20T20:00:00-04:00", stadium: "Estadio Kansas City" },
+    { id: "F4", group: "F", homeTeam: "Túnez", awayTeam: "Japón", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-21T00:00:00-04:00", stadium: "Estadio Monterrey" },
+    { id: "H3", group: "H", homeTeam: "España", awayTeam: "Arabia Saudita", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-21T12:00:00-04:00", stadium: "Estadio Atlanta" },
+    { id: "G3", group: "G", homeTeam: "Bélgica", awayTeam: "Irán", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-21T15:00:00-04:00", stadium: "Estadio Los Angeles" },
+    { id: "H4", group: "H", homeTeam: "Uruguay", awayTeam: "Cabo Verde", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-21T18:00:00-04:00", stadium: "Estadio Miami" },
+    { id: "G4", group: "G", homeTeam: "Nueva Zelanda", awayTeam: "Egipto", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-21T21:00:00-04:00", stadium: "Estadio BC Place Vancouver" },
+    { id: "J3", group: "J", homeTeam: "Argentina", awayTeam: "Austria", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-22T13:00:00-04:00", stadium: "Estadio Dallas" },
+    { id: "I3", group: "I", homeTeam: "Francia", awayTeam: "Irak", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-22T17:00:00-04:00", stadium: "Estadio Filadelfia" },
+    { id: "I4", group: "I", homeTeam: "Noruega", awayTeam: "Senegal", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-22T20:00:00-04:00", stadium: "Estadio Nueva York/Nueva Jersey" },
+    { id: "J4", group: "J", homeTeam: "Jordania", awayTeam: "Argelia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-22T23:00:00-04:00", stadium: "Estadio de la Bahía de San Francisco" },
+    { id: "K3", group: "K", homeTeam: "Portugal", awayTeam: "Uzbekistán", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-23T13:00:00-04:00", stadium: "Estadio Houston" },
+    { id: "L3", group: "L", homeTeam: "Inglaterra", awayTeam: "Ghana", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-23T16:00:00-04:00", stadium: "Estadio Boston" },
+    { id: "L4", group: "L", homeTeam: "Panamá", awayTeam: "Croacia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-23T19:00:00-04:00", stadium: "Estadio de Toronto" },
+    { id: "K4", group: "K", homeTeam: "Colombia", awayTeam: "RD Congo", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-23T22:00:00-04:00", stadium: "Estadio Guadalajara" },
+    { id: "B5", group: "B", homeTeam: "Suiza", awayTeam: "Canadá", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-24T15:00:00-04:00", stadium: "Estadio BC Place Vancouver" },
+    { id: "B6", group: "B", homeTeam: "Bosnia y Herzegovina", awayTeam: "Catar", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-24T15:00:00-04:00", stadium: "Estadio de Seattle" },
+    { id: "C5", group: "C", homeTeam: "Escocia", awayTeam: "Brasil", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-24T18:00:00-04:00", stadium: "Estadio Miami" },
+    { id: "C6", group: "C", homeTeam: "Marruecos", awayTeam: "Haití", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-24T18:00:00-04:00", stadium: "Estadio Atlanta" },
+    { id: "A5", group: "A", homeTeam: "República Checa", awayTeam: "México", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-24T21:00:00-04:00", stadium: "Estadio Ciudad de México" },
+    { id: "A6", group: "A", homeTeam: "Sudáfrica", awayTeam: "Corea del Sur", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-24T21:00:00-04:00", stadium: "Estadio Monterrey" },
+    { id: "E6", group: "E", homeTeam: "Curazao", awayTeam: "Costa de Marfil", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-25T16:00:00-04:00", stadium: "Estadio Filadelfia" },
+    { id: "E5", group: "E", homeTeam: "Ecuador", awayTeam: "Alemania", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-25T16:00:00-04:00", stadium: "Estadio Nueva York/Nueva Jersey" },
+    { id: "F5", group: "F", homeTeam: "Japón", awayTeam: "Suecia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-25T19:00:00-04:00", stadium: "Estadio Dallas" },
+    { id: "F6", group: "F", homeTeam: "Túnez", awayTeam: "Países Bajos", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-25T19:00:00-04:00", stadium: "Estadio Kansas City" },
+    { id: "D5", group: "D", homeTeam: "Turquía", awayTeam: "Estados Unidos", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-25T22:00:00-04:00", stadium: "Estadio Los Angeles" },
+    { id: "D6", group: "D", homeTeam: "Paraguay", awayTeam: "Australia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-25T22:00:00-04:00", stadium: "Estadio de la Bahía de San Francisco" },
+    { id: "I5", group: "I", homeTeam: "Noruega", awayTeam: "Francia", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-26T15:00:00-04:00", stadium: "Estadio Boston" },
+    { id: "I6", group: "I", homeTeam: "Senegal", awayTeam: "Irak", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-26T15:00:00-04:00", stadium: "Estadio de Toronto" },
+    { id: "H5", group: "H", homeTeam: "Cabo Verde", awayTeam: "Arabia Saudita", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-26T20:00:00-04:00", stadium: "Estadio Houston" },
+    { id: "H6", group: "H", homeTeam: "Uruguay", awayTeam: "España", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-26T20:00:00-04:00", stadium: "Estadio Guadalajara" },
+    { id: "G5", group: "G", homeTeam: "Egipto", awayTeam: "Irán", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-26T23:00:00-04:00", stadium: "Estadio de Seattle" },
+    { id: "G6", group: "G", homeTeam: "Nueva Zelanda", awayTeam: "Bélgica", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-26T23:00:00-04:00", stadium: "Estadio BC Place Vancouver" },
+    { id: "L5", group: "L", homeTeam: "Panamá", awayTeam: "Inglaterra", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T17:00:00-04:00", stadium: "Estadio Nueva York/Nueva Jersey" },
+    { id: "L6", group: "L", homeTeam: "Croacia", awayTeam: "Ghana", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T17:00:00-04:00", stadium: "Estadio Filadelfia" },
+    { id: "K5", group: "K", homeTeam: "Colombia", awayTeam: "Portugal", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T19:30:00-04:00", stadium: "Estadio Miami" },
+    { id: "K6", group: "K", homeTeam: "RD Congo", awayTeam: "Uzbekistán", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T19:30:00-04:00", stadium: "Estadio Atlanta" },
+    { id: "J5", group: "J", homeTeam: "Argelia", awayTeam: "Austria", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T22:00:00-04:00", stadium: "Estadio Kansas City" },
+    { id: "J6", group: "J", homeTeam: "Jordania", awayTeam: "Argentina", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T22:00:00-04:00", stadium: "Estadio Dallas" }
+];
+const GROUP_TEAMS = {
+    "A": ["México","Sudáfrica","Corea del Sur","República Checa"], "B": ["Canadá","Bosnia y Herzegovina","Catar","Suiza"],
+    "C": ["Brasil","Marruecos","Haití","Escocia"], "D": ["Estados Unidos","Paraguay","Australia","Turquía"],
+    "E": ["Alemania","Curazao","Costa de Marfil","Ecuador"], "F": ["Países Bajos","Japón","Suecia","Túnez"],
+    "G": ["Bélgica","Egipto","Irán","Nueva Zelanda"], "H": ["España","Cabo Verde","Arabia Saudita","Uruguay"],
+    "I": ["Francia","Senegal","Irak","Noruega"], "J": ["Argentina","Argelia","Austria","Jordania"],
+    "K": ["Portugal","RD Congo","Uzbekistán","Colombia"], "L": ["Inglaterra","Croacia","Ghana","Panamá"]
+};
+
+// ============ PERSISTENCIA ============
+let currentMatches;
+let knockoutMatches = [];
+const savedMatches = localStorage.getItem('worldcup2026_matches');
+const savedKnockout = localStorage.getItem('worldcup2026_knockout');
+if (savedMatches) {
+    currentMatches = JSON.parse(savedMatches);
+    console.log("📀 Datos cargados desde localStorage");
+} else {
+    currentMatches = JSON.parse(JSON.stringify(OFFICIAL_MATCHES));
+    localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
+    console.log("📀 Primera carga: fixture inicial guardado");
+}
+if (savedKnockout) knockoutMatches = JSON.parse(savedKnockout);
+
+// ============ MAPEO DE IDs ============
+let teamIdMap = {};
+
+// ==================== FUNCIONES AUXILIARES ====================
+function getFlagUrl(teamName) {
+    const codes = { "México":"mx","Sudáfrica":"za","Corea del Sur":"kr","República Checa":"cz","Canadá":"ca","Bosnia y Herzegovina":"ba","Catar":"qa","Suiza":"ch","Brasil":"br","Marruecos":"ma","Haití":"ht","Escocia":"gb-sct","Estados Unidos":"us","Paraguay":"py","Australia":"au","Turquía":"tr","Alemania":"de","Curazao":"cw","Costa de Marfil":"ci","Ecuador":"ec","Países Bajos":"nl","Japón":"jp","Suecia":"se","Túnez":"tn","Bélgica":"be","Egipto":"eg","Irán":"ir","Nueva Zelanda":"nz","España":"es","Cabo Verde":"cv","Arabia Saudita":"sa","Uruguay":"uy","Francia":"fr","Senegal":"sn","Irak":"iq","Noruega":"no","Argentina":"ar","Argelia":"dz","Austria":"at","Jordania":"jo","Portugal":"pt","RD Congo":"cd","Uzbekistán":"uz","Colombia":"co","Inglaterra":"gb-eng","Croacia":"hr","Ghana":"gh","Panamá":"pa" };
+    if (teamName === "Escocia") return "https://flagcdn.com/w320/gb-sct.png";
+    if (teamName === "Inglaterra") return "https://flagcdn.com/w320/gb-eng.png";
+    if (teamName === "Curazao") return "https://flagcdn.com/w320/cw.png";
+    let code = codes[teamName];
+    return code ? `https://flagcdn.com/w320/${code}.png` : `https://flagcdn.com/w320/xx.png`;
+}
+function getTeamCode(teamName) {
+    const codes = { "México":"MEX","Sudáfrica":"RSA","Corea del Sur":"KOR","República Checa":"CZE","Canadá":"CAN","Bosnia y Herzegovina":"BIH","Catar":"QAT","Suiza":"SUI","Brasil":"BRA","Marruecos":"MAR","Haití":"HAI","Escocia":"SCO","Estados Unidos":"USA","Paraguay":"PAR","Australia":"AUS","Turquía":"TUR","Alemania":"GER","Curazao":"CUW","Costa de Marfil":"CIV","Ecuador":"ECU","Países Bajos":"NED","Japón":"JPN","Suecia":"SWE","Túnez":"TUN","Bélgica":"BEL","Egipto":"EGY","Irán":"IRN","Nueva Zelanda":"NZL","España":"ESP","Cabo Verde":"CPV","Arabia Saudita":"KSA","Uruguay":"URU","Francia":"FRA","Senegal":"SEN","Irak":"IRQ","Noruega":"NOR","Argentina":"ARG","Argelia":"ALG","Austria":"AUT","Jordania":"JOR","Portugal":"POR","RD Congo":"COD","Uzbekistán":"UZB","Colombia":"COL","Inglaterra":"ENG","Croacia":"CRO","Ghana":"GHA","Panamá":"PAN" };
+    return codes[teamName] || teamName.substring(0,3).toUpperCase();
+}
+function formatDateTime(dateStr) {
+    try { return new Date(dateStr).toLocaleString('es-BO', { timeZone: TIMEZONE, hour12: false, day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
+    catch(e) { return "Fecha no disponible"; }
+}
+function formatGoogleCalendarDate(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getUTCFullYear()}${(d.getUTCMonth()+1).toString().padStart(2,'0')}${d.getUTCDate().toString().padStart(2,'0')}T${d.getUTCHours().toString().padStart(2,'0')}${d.getUTCMinutes().toString().padStart(2,'0')}${d.getUTCSeconds().toString().padStart(2,'0')}Z`;
+}
+async function renderNews() {
+    const container = document.getElementById('newsContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="loading">⏳ Cargando noticias...</div>';
+    const RSS_URL = 'https://news.google.com/rss/search?q=Mundial+2026+f%C3%BAtbol&hl=es-419&gl=US&ceid=US:es-419';
+    const PROXY_URL = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(RSS_URL);
+    try {
+        const response = await fetch(PROXY_URL);
+        const data = await response.json();
+        if (data.items && data.items.length) {
+            let html = '<div style="padding:10px;">';
+            for (let item of data.items.slice(0, 15)) {
+                html += `<a href="${item.link}" target="_blank" style="text-decoration:none; color:inherit;"><div class="news-item">${item.thumbnail ? `<img src="${item.thumbnail}" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">` : ''}<div><div style="font-weight:bold; color:#ffb347;">${item.title}</div><div style="font-size:0.7rem;">${new Date(item.pubDate).toLocaleDateString('es-BO')}</div></div></div></a>`;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        } else container.innerHTML = '<div class="empty-message">No se encontraron noticias.</div>';
+    } catch(e) { container.innerHTML = '<div class="empty-message">Error al cargar noticias.</div>'; }
+}
+
+// ==================== RENDERIZADO ====================
+function renderGroups() {
+    let container = document.getElementById('groupsContainer');
+    if (!container) return;
+    let html = '';
+    let groupOrder = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+    for (let gl of groupOrder) {
+        let matches = currentMatches.filter(m => m.group === gl);
+        let teams = GROUP_TEAMS[gl];
+        html += `<div class="group-card"><div class="group-header">Grupo ${gl}</div><div class="teams-list">${teams.map(t => `<div class="team-badge"><img src="${getFlagUrl(t)}"><span>${getTeamCode(t)}</span></div>`).join('')}</div><div class="matches-list">`;
+        for (let m of matches) {
+            let statusText = "📅 Programado", statusClass = "", scoreDisplay = "vs";
+            if (m.status === "LIVE") { statusText = "🟢 EN VIVO"; statusClass = "live"; scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`; }
+            else if (m.status === "HT") { statusText = "⏸️ Medio tiempo"; statusClass = "live"; scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`; }
+            else if (m.status === "FINISHED" && m.homeScore !== null) { statusText = "✅ Finalizado"; scoreDisplay = `${m.homeScore} - ${m.awayScore}`; }
+            html += `<div class="match-item"><div class="match-teams"><div class="team"><img src="${getFlagUrl(m.homeTeam)}"><span class="team-name">${m.homeTeam}</span></div><div class="score">${scoreDisplay}</div><div class="team"><span class="team-name">${m.awayTeam}</span><img src="${getFlagUrl(m.awayTeam)}"></div></div><div class="match-info"><span>🏟️ ${m.stadium}</span><span>⏰ ${formatDateTime(m.datetime)}</span><span class="status-badge ${statusClass}">${statusText}</span></div></div>`;
+        }
+        html += `</div></div>`;
+    }
+    container.innerHTML = html;
+}
+function calculateGroupStats(matches) {
+    let stats = {};
+    matches.forEach(m => {
+        if (m.status !== "FINISHED" || m.homeScore === null) return;
+        let group = m.group;
+        if (!stats[group]) { stats[group] = {}; GROUP_TEAMS[group].forEach(t => { stats[group][t] = { pj:0, g:0, e:0, p:0, gf:0, gc:0, pts:0 }; }); }
+        let home = m.homeTeam, away = m.awayTeam, hg = m.homeScore, ag = m.awayScore;
+        stats[group][home].pj++; stats[group][away].pj++;
+        stats[group][home].gf += hg; stats[group][home].gc += ag;
+        stats[group][away].gf += ag; stats[group][away].gc += hg;
+        if (hg > ag) { stats[group][home].g++; stats[group][home].pts += 3; stats[group][away].p++; }
+        else if (ag > hg) { stats[group][away].g++; stats[group][away].pts += 3; stats[group][home].p++; }
+        else { stats[group][home].e++; stats[group][away].e++; stats[group][home].pts += 1; stats[group][away].pts += 1; }
+    });
+    for(let g in stats) for(let t in stats[g]) stats[g][t].dg = stats[g][t].gf - stats[g][t].gc;
+    return stats;
+}
+function getQualifiedTeams(matches) {
+    let stats = calculateGroupStats(matches);
+    let qualified = [];
+    let groupOrder = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+    for(let g of groupOrder) {
+        if(!stats[g]) continue;
+        let teams = Object.entries(stats[g]);
+        teams.sort((a,b) => { if(a[1].pts!==b[1].pts) return b[1].pts - a[1].pts; if(a[1].dg!==b[1].dg) return b[1].dg - a[1].dg; return b[1].gf - a[1].gf; });
+        if(teams[0]) qualified.push({ group:g, team:teams[0][0], position:1 });
+        if(teams[1]) qualified.push({ group:g, team:teams[1][0], position:2 });
+    }
+    let thirdPlaced = [];
+    for(let g of groupOrder) {
+        if(!stats[g]) continue;
+        let teams = Object.entries(stats[g]);
+        teams.sort((a,b) => { if(a[1].pts!==b[1].pts) return b[1].pts - a[1].pts; if(a[1].dg!==b[1].dg) return b[1].dg - a[1].dg; return b[1].gf - a[1].gf; });
+        if(teams[2]) thirdPlaced.push({ group:g, team:teams[2][0], stats:teams[2][1] });
+    }
+    thirdPlaced.sort((a,b) => { if(a.stats.pts!==b.stats.pts) return b.stats.pts - a.stats.pts; if(a.stats.dg!==b.stats.dg) return b.stats.dg - a.stats.dg; return b.stats.gf - a.stats.gf; });
+    let bestThird = thirdPlaced.slice(0,8);
+    bestThird.forEach(t => qualified.push({ group:t.group, team:t.team, position:3 }));
+    return qualified;
+}
+function generateKnockoutStages(matches) {
+    let qualified = getQualifiedTeams(matches);
+    if(qualified.length < 32) return [];
+    qualified.sort((a,b) => { if(a.position!==b.position) return a.position - b.position; return a.group.localeCompare(b.group); });
+    let roundOf32 = [];
+    for(let i=0; i<qualified.length; i+=2) if(i+1<qualified.length) roundOf32.push({ id: `KO-${i/2}`, home:qualified[i].team, away:qualified[i+1].team, homeScore:null, awayScore:null, status:"SCHEDULED", stadium:"Sede por definir", datetime:"2026-06-28T00:00:00-04:00", round:"Dieciseisavos" });
+    return roundOf32;
+}
+function renderKnockout() {
+    let container = document.getElementById('knockoutContainer');
+    if(!knockoutMatches.length) { container.innerHTML = '<div class="empty-message">🏅 Las eliminatorias se generarán cuando finalice la fase de grupos.</div>'; return; }
+    let html = '<div class="bracket"><div class="round"><h3>🔹 Dieciseisavos de Final</h3>';
+    for(let m of knockoutMatches) {
+        let scoreDisplay = (m.status === "FINISHED" && m.homeScore !== null) ? `${m.homeScore} - ${m.awayScore}` : 'vs';
+        html += `<div class="knockout-match"><div class="match-teams"><div class="team"><img src="${getFlagUrl(m.home)}"><span>${m.home}</span></div><div class="score">${scoreDisplay}</div><div class="team"><span>${m.away}</span><img src="${getFlagUrl(m.away)}"></div></div><div class="match-info"><span>🏟️ ${m.stadium}</span><span>⏰ ${formatDateTime(m.datetime)}</span></div></div>`;
+    }
+    html += '</div></div>';
+    container.innerHTML = html;
+}
+function renderResults() {
+    let finished = currentMatches.filter(m => m.status === "FINISHED" && m.homeScore !== null);
+    let container = document.getElementById('resultsContainer');
+    if(!finished.length) { container.innerHTML = '<div class="empty-message">Aún no hay partidos finalizados</div>'; return; }
+    let html = '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Local</th><th>vs</th><th>Visitante</th><th>Fecha</th></tr></thead><tbody>';
+    for(let m of finished) {
+        html += `<tr><td class="player-cell"><img src="${getFlagUrl(m.homeTeam)}"> ${m.homeTeam}</td><td style="white-space:nowrap;">${m.homeScore} - ${m.awayScore}</td><td class="player-cell">${m.awayTeam} <img src="${getFlagUrl(m.awayTeam)}"></td><td style="white-space:nowrap; font-size:0.7rem;">${formatDateTime(m.datetime)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+function getAllMatches() { return [...currentMatches, ...knockoutMatches].sort((a,b)=>new Date(a.datetime)-new Date(b.datetime)); }
+let fixtureEditMode = false;
+function renderFixture(editMode = false) {
+    const container = document.getElementById('fixtureContainer');
+    if (!container) return;
+    const allMatches = getAllMatches();
+    if (!allMatches.length) { container.innerHTML = '<div class="empty-message">No hay partidos.</div>'; return; }
+    let html = '<div style="overflow-x:auto; max-width:100%;">';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">';
+    html += '<thead><tr style="background:rgba(0,0,0,0.6);">';
+    html += '<th style="padding:8px 4px;">Fecha</th><th style="padding:8px 4px;">Grupo</th><th style="padding:8px 4px;">Local</th><th style="padding:8px 4px;">vs</th><th style="padding:8px 4px;">Visitante</th><th style="padding:8px 4px;">Estadio</th>';
+    html += editMode ? '<th style="padding:8px 4px;">G.Loc</th><th style="padding:8px 4px;">G.Vis</th>' : '<th style="padding:8px 4px;">Resultado</th>';
+    html += '<th style="padding:8px 4px;">📅</th>';
+    html += '</tr></thead><tbody>';
+    for (const m of allMatches) {
+        const fase = m.group || m.round || (m.id && m.id.startsWith('KO') ? 'Elim' : 'Grupo');
+        const local = m.home || m.homeTeam;
+        const visitante = m.away || m.awayTeam;
+        let resultado = m.status === "FINISHED" && m.homeScore !== null ? `${m.homeScore} - ${m.awayScore}` : (m.status === "LIVE" ? "En vivo" : "Programado");
+        const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(local + ' vs ' + visitante)}&dates=${formatGoogleCalendarDate(m.datetime)}/${formatGoogleCalendarDate(m.datetime)}&details=Partido+del+Mundial+2026&location=${encodeURIComponent(m.stadium || 'Estadio')}`;
+        html += `<tr data-id="${m.id}">
+            <td style="font-size:0.7rem; white-space:nowrap;">${formatDateTime(m.datetime)}</td>
+            <td style="color:#ffb347; white-space:nowrap;">${fase}</td>
+            <td style="white-space:nowrap;"><img src="${getFlagUrl(local)}" style="width:20px;height:14px;margin-right:4px;">${local}</td>
+            <td style="white-space:nowrap;">vs</td>
+            <td style="white-space:nowrap;">${visitante}<img src="${getFlagUrl(visitante)}" style="width:20px;height:14px;margin-left:4px;"></td>
+            <td style="font-size:0.7rem; white-space:nowrap;">${m.stadium || 'Por definir'}</td>`;
+        if (editMode) {
+            html += `<td><input type="number" class="fixture-input home-score" value="${m.homeScore ?? ''}" placeholder="-"></td>
+                     <td><input type="number" class="fixture-input away-score" value="${m.awayScore ?? ''}" placeholder="-"></td>`;
+        } else {
+            html += `<td style="white-space:nowrap;">${resultado}</td>`;
+        }
+        html += `<td style="text-align:center;"><a href="${googleCalUrl}" target="_blank" style="color:#ffb347; text-decoration:none; font-size:1rem;">📅</a></td>`;
+        html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+    // Añadir hint de desplazamiento si es necesario (ya está arriba)
+}
+
+// ==================== OBTENER IDs (proxy) ====================
+async function fetchTeamIds() {
+    console.log("🆔 Obteniendo IDs de equipos de la competición...");
+    try {
+        const res = await apiFetch(`/competitions/${COMPETITION_ID}/teams`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const teams = data.teams || [];
+        console.log(`🆔 Equipos obtenidos: ${teams.length}`);
+        for (let team of teams) {
+            const englishName = team.name;
+            const spanishName = TEAM_MAP_REVERSE[englishName];
+            if (spanishName) {
+                teamIdMap[spanishName] = team.id;
+                console.log(`   Mapeo: ${spanishName} (${englishName}) -> ID ${team.id}`);
+            } else {
+                console.warn(`⚠️ No se encontró mapeo español para: ${englishName}`);
+            }
+        }
+        console.log("🆔 Mapeo de IDs completado.");
+    } catch(e) { console.error("❌ Error al obtener IDs de equipos:", e); }
+}
+
+// ==================== OBTENER DETALLES ====================
+async function fetchMatchDetails(matchId, localMatch) {
+    console.log(`📡 Solicitando detalles del partido ID ${matchId}: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
+    try {
+        const res = await apiFetch(`/matches/${matchId}`);
+        if (!res.ok) {
+            console.warn(`⚠️ Error al obtener detalles (${res.status}) para ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
+            return false;
+        }
+        const detail = await res.json();
+        console.log(`📝 Datos detallados de ${localMatch.homeTeam} vs ${localMatch.awayTeam}:`, {
+            status: detail.status,
+            fullTime: detail.score?.fullTime,
+            halfTime: detail.score?.halfTime
+        });
+        let newHome = null, newAway = null;
+        if (detail.score?.fullTime?.home !== undefined && detail.score?.fullTime?.away !== undefined) {
+            newHome = detail.score.fullTime.home;
+            newAway = detail.score.fullTime.away;
+        } else if (detail.score?.halfTime?.home !== undefined && detail.score?.halfTime?.away !== undefined) {
+            newHome = detail.score.halfTime.home;
+            newAway = detail.score.halfTime.away;
+        }
+        let newStatus = localMatch.status;
+        const st = detail.status;
+        if (st === "FINISHED") newStatus = "FINISHED";
+        else if (st === "LIVE" || st === "IN_PLAY" || st === "PAUSED") newStatus = "LIVE";
+        else if (st === "HT") newStatus = "HT";
+        else newStatus = "SCHEDULED";
+        if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
+            localMatch.status = newStatus;
+            localMatch.homeScore = newHome;
+            localMatch.awayScore = newAway;
+            console.log(`🟢 ACTUALIZADO: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus})`);
+            return true;
+        } else {
+            console.log(`⏸️ Sin cambios: ${localMatch.homeTeam} ${localMatch.homeScore} - ${localMatch.awayScore} ${localMatch.awayTeam} (${localMatch.status})`);
+            return false;
+        }
+    } catch(e) { console.error(`❌ Error en detalle del partido ${matchId}:`, e); return false; }
+}
+
+// ==================== CICLO PRINCIPAL ====================
+let lastUpdateTime = 0;
+async function fetchAllData() {
+    const now = Date.now();
+    if (now - lastUpdateTime < 60000) return;
+    lastUpdateTime = now;
+    console.log("🚀 Iniciando ciclo de actualización desde football-data.org vía proxy...");
+    if (Object.keys(teamIdMap).length === 0) {
+        console.log("⏳ Esperando mapeo de IDs de equipos...");
+        await fetchTeamIds();
+        if (Object.keys(teamIdMap).length === 0) {
+            console.error("❌ No se pudo obtener el mapeo de IDs. Abortando actualización.");
+            return;
+        }
+    }
+    try {
+        const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
+        if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
+        const listData = await listRes.json();
+        const apiMatches = listData.matches || [];
+        console.log(`📋 Lista recibida: ${apiMatches.length} partidos.`);
+        if (!apiMatches.length) return;
+        const matchesByTeamIds = {};
+        for (let apiMatch of apiMatches) matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
+        const promises = [];
+        for (let localMatch of currentMatches) {
+            const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
+            if (!homeId || !awayId) {
+                console.warn(`❌ No se encontró ID para ${localMatch.homeTeam} o ${localMatch.awayTeam}`);
+                continue;
+            }
+            const apiMatch = matchesByTeamIds[`${homeId}_${awayId}`];
+            if (!apiMatch) {
+                console.warn(`❓ No se encontró en API el partido: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (IDs: ${homeId}/${awayId})`);
+                continue;
+            }
+            console.log(`🔍 Partido encontrado en API: ${localMatch.homeTeam} vs ${localMatch.awayTeam} -> estado API: ${apiMatch.status}`);
+            const status = apiMatch.status;
+            if (status === "FINISHED" || status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT") {
+                console.log(`➕ Se agregará a la cola de detalles: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (${status})`);
+                promises.push(fetchMatchDetails(apiMatch.id, localMatch));
+            } else {
+                console.log(`⏭️ Saltando (estado ${status}) - No necesita detalles: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
+            }
+        }
+        let anyUpdate = false;
+        for (let i = 0; i < promises.length; i++) {
+            if (await promises[i]) anyUpdate = true;
+            if (i < promises.length - 1) await new Promise(r => setTimeout(r, 2000));
+        }
+        if (anyUpdate) {
+            localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
+            const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
+            if (allGroupFinished && knockoutMatches.length === 0) {
+                knockoutMatches = generateKnockoutStages(currentMatches);
+                localStorage.setItem('worldcup2026_knockout', JSON.stringify(knockoutMatches));
+            }
+            renderGroups(); renderKnockout(); renderResults();
+            if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
+        }
+        document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()}`;
+        console.log("✅ Ciclo de actualización completado.");
+    } catch(e) { console.error("❌ Error en ciclo de actualización:", e); document.getElementById('lastUpdate').innerHTML = `❌ Error: ${e.message}`; }
+}
+
+// ==================== INICIALIZACIÓN ====================
+(async function init() {
+    await fetchTeamIds();
+    renderGroups(); renderKnockout(); renderResults(); renderFixture(false);
+    setInterval(fetchAllData, 60000);
+    fetchAllData();
+})();
+
+// Pestañas
+const btns = document.querySelectorAll('.tab-btn');
+const panels = {
+    groups: document.getElementById('groupsPanel'),
+    knockout: document.getElementById('knockoutPanel'),
+    news: document.getElementById('newsPanel'),
+    results: document.getElementById('resultsPanel'),
+    fixture: document.getElementById('fixturePanel'),
+    about: document.getElementById('aboutPanel')
+};
+for (let btn of btns) {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        if (btn.id === 'editResultsBtn' || btn.id === 'saveResultsBtn') return;
+        for (let b of btns) b.classList.remove('active');
+        btn.classList.add('active');
+        for (let p in panels) panels[p].style.display = p === tab ? 'block' : 'none';
+        if (tab === 'results') renderResults();
+        if (tab === 'news') renderNews();
+        if (tab === 'knockout') renderKnockout();
+        if (tab === 'fixture') renderFixture(fixtureEditMode);
+    });
+}
+// Botones de edición
+const editBtn = document.getElementById('editResultsBtn');
+const saveBtn = document.getElementById('saveResultsBtn');
+if (editBtn && saveBtn) {
+    editBtn.addEventListener('click', () => {
+        fixtureEditMode = !fixtureEditMode;
+        renderFixture(fixtureEditMode);
+        editBtn.textContent = fixtureEditMode ? '↩️ Cancelar edición' : '✏️ Editar resultados';
+        saveBtn.style.display = fixtureEditMode ? 'inline-block' : 'none';
+    });
+    saveBtn.addEventListener('click', () => {
+        document.querySelectorAll('#fixtureContainer tr[data-id]').forEach(row => {
+            const id = row.dataset.id;
+            const homeInp = row.querySelector('.home-score'), awayInp = row.querySelector('.away-score');
+            if (homeInp && awayInp) {
+                const hs = homeInp.value !== '' ? parseInt(homeInp.value) : null;
+                const as = awayInp.value !== '' ? parseInt(awayInp.value) : null;
+                let match = currentMatches.find(m => m.id === id) || knockoutMatches.find(m => m.id === id);
+                if (match) {
+                    match.homeScore = hs;
+                    match.awayScore = as;
+                    match.status = (hs !== null && as !== null) ? "FINISHED" : "SCHEDULED";
+                }
+            }
+        });
+        const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
+        if (allGroupFinished && knockoutMatches.length === 0) knockoutMatches = generateKnockoutStages(currentMatches);
+        localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
+        localStorage.setItem('worldcup2026_knockout', JSON.stringify(knockoutMatches));
+        renderGroups(); renderKnockout(); renderResults();
+        fixtureEditMode = false;
+        renderFixture(false);
+        editBtn.textContent = '✏️ Editar resultados';
+        saveBtn.style.display = 'none';
+    });
+}
+// Cuenta regresiva
+setInterval(() => {
+    let diff = WORLD_CUP_START - new Date();
+    if (diff <= 0) document.getElementById('countdownContainer').innerHTML = '<div class="countdown-label">⚽ MUNDIAL EN MARCHA</div>';
+    else {
+        document.getElementById('days').textContent = Math.floor(diff / (1000*60*60*24)).toString().padStart(2,'0');
+        document.getElementById('hours').textContent = Math.floor((diff % 86400000) / 3600000).toString().padStart(2,'0');
+        document.getElementById('minutes').textContent = Math.floor((diff % 3600000) / 60000).toString().padStart(2,'0');
+        document.getElementById('seconds').textContent = Math.floor((diff % 60000) / 1000).toString().padStart(2,'0');
+    }
+}, 1000);
+const scrollUpBtn = document.getElementById('scrollUpBtn');
+window.addEventListener('scroll', () => scrollUpBtn.style.display = window.scrollY > 400 ? 'flex' : 'none');
+scrollUpBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+const audio = new Audio('mundial-theme.mp3');
+audio.loop = false;
+let introPlayed = false;
+function tryPlay() { if (!introPlayed) audio.play().then(()=>introPlayed=true).catch(()=>{}); }
+tryPlay();
+document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, { once: true });
+</script>
+</body>
+</html>
