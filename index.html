@@ -224,14 +224,15 @@ const TIMEZONE = "America/La_Paz";
 const WORLD_CUP_START = new Date("2026-06-11T15:00:00-04:00");
 const COMPETITION_ID = "WC";
 
-// ----- PROXY PROPIO EN CLOUDFLARE WORKER -----
-const WORKER_URL = "https://cool-hat-282c.rolmen-z.workers.dev"; // ¡PEGA AQUÍ TU URL!
+// ----- PROXY CORS -----
+const CORS_PROXY = "https://corsproxy.io/";
+const BASE_API_URL = "https://api.football-data.org/v4";
 
 function apiFetch(endpoint) {
-    // endpoint viene como "/competitions/WC/teams"
-    return fetch(`${WORKER_URL}${endpoint}`);
+    return fetch(`${CORS_PROXY}${BASE_API_URL}${endpoint}`, {
+        headers: { 'X-Auth-Token': FOOTBALL_DATA_KEY }
+    });
 }
-
 
 // ============ MAPEO DE NOMBRES ============
 const TEAM_MAP_REVERSE = {
@@ -664,16 +665,11 @@ let lastUpdateTime = 0;
 let consecutive429 = 0;
 let dynamicInterval = 120000; // 2 minutos base
 
-// ==================== CICLO PRINCIPAL OPTIMIZADO ====================
-let lastUpdateTime = 0;
-let consecutive429 = 0;
-let dynamicInterval = 60000; // 1 minuto base (más reactivo)
-
 async function fetchAllData() {
     const now = Date.now();
     if (now - lastUpdateTime < dynamicInterval) return;
     lastUpdateTime = now;
-    console.log("🚀 Iniciando ciclo de actualización...");
+    console.log("🚀 Iniciando ciclo de actualización optimizado...");
     if (Object.keys(teamIdMap).length === 0) {
         console.log("⏳ Esperando mapeo de IDs...");
         await fetchTeamIds();
@@ -683,32 +679,33 @@ async function fetchAllData() {
         }
     }
     try {
+        // 1. Obtener lista de partidos (solo una petición)
         const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (!listRes.ok) {
             if (listRes.status === 429) {
                 consecutive429++;
-                const wait = Math.min(60000, 30000 * consecutive429);
+                const wait = Math.min(120000, 60000 * consecutive429);
                 console.warn(`⚠️ Límite excedido (429). Esperando ${wait/1000} segundos.`);
                 dynamicInterval = wait;
                 document.getElementById('lastUpdate').innerHTML = `⏳ Límite API alcanzado. Reintentando en ${wait/1000}s...`;
-                setTimeout(() => { dynamicInterval = 60000; fetchAllData(); }, wait);
+                setTimeout(() => { dynamicInterval = 120000; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        dynamicInterval = 60000;
+        dynamicInterval = 120000; // restaurar intervalo normal
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista recibida: ${apiMatches.length} partidos.`);
         if (!apiMatches.length) return;
-
+        
+        // 2. Crear mapa por IDs
         const matchesByTeamIds = {};
-        for (let apiMatch of apiMatches)
-            matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
-
-        // --- Colección de partidos a actualizar ---
-        const toUpdate = [];
+        for (let apiMatch of apiMatches) matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
+        
+        // 3. Identificar partidos que necesitan detalles (solo en vivo o entretiempo)
+        const liveMatches = [];
         for (let localMatch of currentMatches) {
             const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
             if (!homeId || !awayId) continue;
@@ -716,26 +713,30 @@ async function fetchAllData() {
             if (!apiMatch) continue;
             const status = apiMatch.status;
             const isLive = (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT");
-            const justFinished = (status === "FINISHED" && localMatch.status !== "FINISHED");
-            const noScoreYet = (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null));
-            if (isLive || justFinished || noScoreYet) {
-                toUpdate.push({ apiMatch, localMatch });
-                console.log(`➕ Pendiente: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (API: ${status})`);
+            if (isLive) {
+                liveMatches.push({ apiMatch, localMatch });
+            } else if (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null)) {
+                // Si el partido está FINISHED pero aún no tenemos marcador, también lo pedimos una sola vez
+                liveMatches.push({ apiMatch, localMatch });
             }
         }
-        console.log(`📡 Partidos a actualizar: ${toUpdate.length}`);
+        
+        console.log(`📡 Partidos que requieren actualización: ${liveMatches.length}`);
         let anyUpdate = false;
-        for (let i = 0; i < toUpdate.length; i++) {
-            const updated = await fetchMatchDetails(toUpdate[i].apiMatch.id, toUpdate[i].localMatch);
+        // Pedir detalles de cada partido en vivo (con espaciado de 2 segundos)
+        for (let i = 0; i < liveMatches.length; i++) {
+            const item = liveMatches[i];
+            const updated = await fetchMatchDetails(item.apiMatch.id, item.localMatch);
             if (updated) anyUpdate = true;
-            if (i < toUpdate.length - 1) await new Promise(r => setTimeout(r, 2000));
+            if (i < liveMatches.length - 1) await new Promise(r => setTimeout(r, 2000));
         }
-
-        // Actualizar goleadores
+        
+        // 4. Actualizar goleadores (solo una petición adicional)
         const scorersUpdated = await fetchScorers();
-        if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none')
+        if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none') {
             renderScorers();
-
+        }
+        
         if (anyUpdate) {
             localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
             const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
@@ -744,8 +745,7 @@ async function fetchAllData() {
                 localStorage.setItem('worldcup2026_knockout', JSON.stringify(knockoutMatches));
             }
             renderGroups(); renderKnockout(); renderResults();
-            if (document.getElementById('fixturePanel').style.display !== 'none')
-                renderFixture(fixtureEditMode);
+            if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
         }
         document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()}`;
         console.log("✅ Ciclo completado.");
@@ -754,8 +754,6 @@ async function fetchAllData() {
         document.getElementById('lastUpdate').innerHTML = `❌ Error: ${e.message}`;
     }
 }
-
-
 
 // ==================== INICIALIZACIÓN ====================
 (async function init() {
@@ -851,3 +849,4 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
+
