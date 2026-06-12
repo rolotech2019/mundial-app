@@ -224,14 +224,12 @@ const TIMEZONE = "America/La_Paz";
 const WORLD_CUP_START = new Date("2026-06-11T15:00:00-04:00");
 const COMPETITION_ID = "WC";
 
-// ----- PROXY CORS -----
-const CORS_PROXY = "https://corsproxy.io/";
-const BASE_API_URL = "https://api.football-data.org/v4";
+// ----- PROXY PROPIO EN CLOUDFLARE WORKER -----
+const WORKER_URL = "https://cool-hat-282c.rolmen-z.workers.dev"; // ¡PEGA AQUÍ TU URL!
 
 function apiFetch(endpoint) {
-    return fetch(`${CORS_PROXY}${BASE_API_URL}${endpoint}`, {
-        headers: { 'X-Auth-Token': FOOTBALL_DATA_KEY }
-    });
+    // endpoint viene como "/competitions/WC/teams"
+    return fetch(`${WORKER_URL}${endpoint}`);
 }
 
 // ============ MAPEO DE NOMBRES ============
