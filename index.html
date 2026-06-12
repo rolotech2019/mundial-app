@@ -199,6 +199,7 @@
         <button class="tab-btn" data-tab="news">📰 Noticias</button>
         <button class="tab-btn" data-tab="results">✅ Resultados</button>
         <button class="tab-btn" data-tab="fixture">📅 Fixture</button>
+        <button class="tab-btn" data-tab="standings">🏆 Clasificación</button>
         <button class="tab-btn" data-tab="about">ℹ️ Acerca de</button>
     </div>
 
@@ -212,6 +213,12 @@
         <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
         <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
     </div>
+ <div id="standingsPanel" class="panel" style="display: none;">
+    <div class="data-container" id="standingsContainer">
+        ⏳ Cargando tabla de posiciones...
+    </div>
+</div>
+    
     <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 2 minutos (respetando límite gratuito de 10 peticiones/min).</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
     <footer>Datos oficiales vía football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
@@ -559,6 +566,89 @@ async function fetchScorers() {
         return false;
     }
 }
+
+
+// ==================== TABLA DE POSICIONES (CLASIFICACIÓN) ====================
+let standingsData = [];
+const savedStandings = localStorage.getItem('worldcup2026_standings');
+if (savedStandings) {
+    try {
+        standingsData = JSON.parse(savedStandings);
+        console.log("🏆 Clasificación cargada desde localStorage");
+    } catch(e) { console.warn("Error al cargar clasificación guardada"); }
+}
+
+async function fetchStandings() {
+    console.log("🏆 Obteniendo tabla de posiciones...");
+    try {
+        const res = await apiFetch(`/competitions/${COMPETITION_ID}/standings`);
+        if (!res.ok) {
+            console.warn(`Error al obtener clasificación: ${res.status}`);
+            return false;
+        }
+        const data = await res.json();
+        // La API devuelve un array "standings". Normalmente el primer elemento es la tabla TOTAL.
+        if (data.standings && data.standings.length > 0) {
+            // Buscar el standing de tipo "TOTAL" (tabla general)
+            const totalStanding = data.standings.find(s => s.type === "TOTAL");
+            if (totalStanding && totalStanding.table) {
+                standingsData = totalStanding.table;
+                localStorage.setItem('worldcup2026_standings', JSON.stringify(standingsData));
+                console.log(`🏆 Clasificación obtenida y guardada: ${standingsData.length} equipos`);
+                return true;
+            } else {
+                console.log("🏆 No se encontró tabla TOTAL en la respuesta");
+                return false;
+            }
+        } else {
+            console.log("🏆 No hay datos de clasificación aún");
+            return false;
+        }
+    } catch(e) {
+        console.error("Error en fetchStandings:", e);
+        return false;
+    }
+}
+
+function renderStandings() {
+    const container = document.getElementById('standingsContainer');
+    if (!container) return;
+    if (!standingsData.length) {
+        container.innerHTML = '<div class="empty-message">🏆 Aún no hay datos de clasificación. La tabla de posiciones aparecerá aquí cuando esté disponible.</div>';
+        return;
+    }
+    // Ordenar por puntos descendente y luego por diferencia de goles
+    const sorted = [...standingsData].sort((a,b) => {
+        if (a.points !== b.points) return b.points - a.points;
+        return b.goalDifference - a.goalDifference;
+    });
+    let html = '<div style="overflow-x:auto;">';
+    html += '<table class="data-table" style="width:100%; border-collapse:collapse;">';
+    html += '<thead><tr>';
+    html += '<th>Pos</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th>';
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < sorted.length; i++) {
+        const team = sorted[i];
+        const teamName = TEAM_MAP_REVERSE[team.team.name] || team.team.name;
+        html += `<tr>
+            <td style="text-align:center; font-weight:bold;">${i+1}</td>
+            <td style="text-align:left;"><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
+            <td style="text-align:center;">${team.playedGames}</td>
+            <td style="text-align:center;">${team.won}</td>
+            <td style="text-align:center;">${team.draw}</td>
+            <td style="text-align:center;">${team.lost}</td>
+            <td style="text-align:center;">${team.goalsFor}</td>
+            <td style="text-align:center;">${team.goalsAgainst}</td>
+            <td style="text-align:center;">${team.goalDifference}</td>
+            <td style="text-align:center; font-weight:bold; color:#ffb347;">${team.points}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+
+    
 function renderScorers() {
     const container = document.getElementById('scorersContainer');
     if (!container) return;
@@ -732,6 +822,15 @@ async function fetchAllData() {
         const scorersUpdated = await fetchScorers();
         if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none')
             renderScorers();
+
+
+        // Actualizar clasificación
+const standingsUpdated = await fetchStandings();
+if (standingsUpdated && document.getElementById('standingsPanel').style.display !== 'none') {
+    renderStandings();
+}
+
+
         
         if (anyUpdate) {
             localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
@@ -757,6 +856,7 @@ async function fetchAllData() {
     await fetchTeamIds();
     renderGroups(); renderKnockout(); renderResults(); renderFixture(false);
     await fetchScorers(); renderScorers();
+      await fetchStandings(); renderStandings();
     // Ejecutar primer ciclo inmediatamente y luego cada 2 minutos
   fetchAllData();
 setInterval(fetchAllData, 60000); // 1 minuto (más reactivo)
@@ -771,6 +871,7 @@ const panels = {
     news: document.getElementById('newsPanel'),
     results: document.getElementById('resultsPanel'),
     fixture: document.getElementById('fixturePanel'),
+    standings: document.getElementById('standingsPanel'),
     about: document.getElementById('aboutPanel')
 };
 for (let btn of btns) {
@@ -784,6 +885,7 @@ for (let btn of btns) {
         if (tab === 'news') renderNews();
         if (tab === 'knockout') renderKnockout();
         if (tab === 'fixture') renderFixture(fixtureEditMode);
+        if (tab === 'standings') renderStandings();
         if (tab === 'scorers') renderScorers();
     });
 }
