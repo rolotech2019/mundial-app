@@ -679,33 +679,32 @@ async function fetchAllData() {
         }
     }
     try {
-        // 1. Obtener lista de partidos (solo una petición)
         const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (!listRes.ok) {
             if (listRes.status === 429) {
                 consecutive429++;
-                const wait = Math.min(120000, 60000 * consecutive429);
+                const wait = Math.min(60000, 30000 * consecutive429);
                 console.warn(`⚠️ Límite excedido (429). Esperando ${wait/1000} segundos.`);
                 dynamicInterval = wait;
                 document.getElementById('lastUpdate').innerHTML = `⏳ Límite API alcanzado. Reintentando en ${wait/1000}s...`;
-                setTimeout(() => { dynamicInterval = 120000; fetchAllData(); }, wait);
+                setTimeout(() => { dynamicInterval = 60000; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        dynamicInterval = 120000; // restaurar intervalo normal
+        dynamicInterval = 60000; // Restaurar a 1 minuto (más reactivo)
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista recibida: ${apiMatches.length} partidos.`);
         if (!apiMatches.length) return;
         
-        // 2. Crear mapa por IDs
         const matchesByTeamIds = {};
-        for (let apiMatch of apiMatches) matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
+        for (let apiMatch of apiMatches)
+            matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
         
-        // 3. Identificar partidos que necesitan detalles (solo en vivo o entretiempo)
-        const liveMatches = [];
+        // Colección de partidos que requieren actualización
+        const matchesToUpdate = [];
         for (let localMatch of currentMatches) {
             const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
             if (!homeId || !awayId) continue;
@@ -713,29 +712,26 @@ async function fetchAllData() {
             if (!apiMatch) continue;
             const status = apiMatch.status;
             const isLive = (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT");
-            if (isLive) {
-                liveMatches.push({ apiMatch, localMatch });
-            } else if (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null)) {
-                // Si el partido está FINISHED pero aún no tenemos marcador, también lo pedimos una sola vez
-                liveMatches.push({ apiMatch, localMatch });
+            const justFinished = (status === "FINISHED" && localMatch.status !== "FINISHED");
+            const noScoreYet = (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null));
+            if (isLive || justFinished || noScoreYet) {
+                matchesToUpdate.push({ apiMatch, localMatch });
+                console.log(`➕ Pendiente: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (API: ${status})`);
             }
         }
         
-        console.log(`📡 Partidos que requieren actualización: ${liveMatches.length}`);
+        console.log(`📡 Partidos a actualizar: ${matchesToUpdate.length}`);
         let anyUpdate = false;
-        // Pedir detalles de cada partido en vivo (con espaciado de 2 segundos)
-        for (let i = 0; i < liveMatches.length; i++) {
-            const item = liveMatches[i];
+        for (let i = 0; i < matchesToUpdate.length; i++) {
+            const item = matchesToUpdate[i];
             const updated = await fetchMatchDetails(item.apiMatch.id, item.localMatch);
             if (updated) anyUpdate = true;
-            if (i < liveMatches.length - 1) await new Promise(r => setTimeout(r, 2000));
+            if (i < matchesToUpdate.length - 1) await new Promise(r => setTimeout(r, 2000));
         }
         
-        // 4. Actualizar goleadores (solo una petición adicional)
         const scorersUpdated = await fetchScorers();
-        if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none') {
+        if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none')
             renderScorers();
-        }
         
         if (anyUpdate) {
             localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
@@ -745,7 +741,8 @@ async function fetchAllData() {
                 localStorage.setItem('worldcup2026_knockout', JSON.stringify(knockoutMatches));
             }
             renderGroups(); renderKnockout(); renderResults();
-            if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
+            if (document.getElementById('fixturePanel').style.display !== 'none')
+                renderFixture(fixtureEditMode);
         }
         document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()}`;
         console.log("✅ Ciclo completado.");
