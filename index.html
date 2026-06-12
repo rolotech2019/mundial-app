@@ -758,8 +758,8 @@ async function fetchAllData() {
     renderGroups(); renderKnockout(); renderResults(); renderFixture(false);
     await fetchScorers(); renderScorers();
     // Ejecutar primer ciclo inmediatamente y luego cada 2 minutos
-    fetchAllData();
-    setInterval(fetchAllData, 120000); // 2 minutos
+  fetchAllData();
+setInterval(fetchAllData, 60000); // 1 minuto (más reactivo)
 })();
 
 // Pestañas
