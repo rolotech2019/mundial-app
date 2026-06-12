@@ -51,8 +51,8 @@
     .status-badge.live { background: #e67e22; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
     .data-container { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-radius: 20px; padding: 18px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
-    .data-table td, #fixtureContainer table td { border-bottom: 1px solid rgba(255,255,255,0.15); }
-    .data-table th, #fixtureContainer table th { border-bottom: 2px solid rgba(255,180,70,0.5); }
+    .data-table td, #fixtureContainer table td, #scorersContainer table td { border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .data-table th, #fixtureContainer table th, #scorersContainer table th { border-bottom: 2px solid rgba(255,180,70,0.5); }
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
     .data-table th, .data-table td { padding: 10px 8px; text-align: center; }
     .data-table th { background: rgba(0,0,0,0.5); color: #ffb347; font-weight: bold; }
@@ -117,6 +117,53 @@
         color: #ffb347;
         margin-bottom: 5px;
     }
+   /* Corrección de líneas en la tabla de goleadores */
+#scorersContainer table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    table-layout: auto; /* permite que se ajuste, pero fijamos anchos mínimos */
+}
+#scorersContainer th, 
+#scorersContainer td {
+    padding: 10px 6px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    vertical-align: middle;
+    line-height: 1.3;
+}
+#scorersContainer th {
+    background: rgba(0,0,0,0.5);
+    color: #ffb347;
+    font-weight: bold;
+    border-bottom: 2px solid rgba(255,180,70,0.7);
+}
+#scorersContainer td {
+    white-space: nowrap;   /* evita saltos de línea dentro de la celda */
+}
+/* Para móviles, permitimos que el texto se ajuste si es necesario */
+@media (max-width: 600px) {
+    #scorersContainer th, 
+    #scorersContainer td {
+        white-space: normal;
+        font-size: 0.75rem;
+        padding: 6px 3px;
+    }
+    .scorer-team img {
+        width: 20px;
+        height: 14px;
+    }
+}
+/* La primera columna (#) con ancho fijo */
+#scorersContainer th:first-child,
+#scorersContainer td:first-child {
+    width: 40px;
+}
+/* La columna del nombre más ancha */
+#scorersContainer th:nth-child(2),
+#scorersContainer td:nth-child(2) {
+    text-align: left;
+}
     .news-item { background: rgba(255,255,255,0.08); margin-bottom: 12px; padding: 12px; border-radius: 12px; transition: all 0.3s; border: 1px solid transparent; display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
     .news-item:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,180,70,0.6); transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.5); }
     .news-item img { border-radius: 8px; }
@@ -129,7 +176,7 @@
 <div class="container">
     <div class="header">
         <h1>🏆 Mundial 2026</h1>
-        <p>Actualización automática cada 60 segundos</p>
+        <p>Actualización automática cada 2 minutos (respeta límite API)</p>
         <div id="countdownContainer" class="countdown">
             <div class="countdown-label">⚽ COMIENZA EN</div>
             <div class="countdown-timer">
@@ -148,6 +195,7 @@
     <div class="tabs">
         <button class="tab-btn active" data-tab="groups">📋 Fase Grupos</button>
         <button class="tab-btn" data-tab="knockout">🏆 Eliminatorias</button>
+        <button class="tab-btn" data-tab="scorers">🥅 Goleadores</button>
         <button class="tab-btn" data-tab="news">📰 Noticias</button>
         <button class="tab-btn" data-tab="results">✅ Resultados</button>
         <button class="tab-btn" data-tab="fixture">📅 Fixture</button>
@@ -156,6 +204,7 @@
 
     <div id="groupsPanel" class="panel active"><div class="groups-container" id="groupsContainer">⏳ Cargando fase de grupos...</div></div>
     <div id="knockoutPanel" class="panel" style="display: none;"><div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div></div>
+    <div id="scorersPanel" class="panel" style="display: none;"><div class="data-container" id="scorersContainer">⏳ Cargando tabla de goleadores...</div></div>
     <div id="newsPanel" class="panel" style="display: none;"><div class="data-container" id="newsContainer">📰 Noticias...</div></div>
     <div id="resultsPanel" class="panel" style="display: none;"><div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div></div>
     <div id="fixturePanel" class="panel" style="display: none;">
@@ -163,7 +212,7 @@
         <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
         <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
     </div>
-    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 60 segundos.</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
+    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 2 minutos (respetando límite gratuito de 10 peticiones/min).</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
     <footer>Datos oficiales vía football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
 </div>
@@ -176,12 +225,13 @@ const WORLD_CUP_START = new Date("2026-06-11T15:00:00-04:00");
 const COMPETITION_ID = "WC";
 
 // ----- PROXY CORS -----
-//const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
-//const BASE_API_URL = "https://api.football-data.org/v4";
+const CORS_PROXY = "https://corsproxy.io/";
+const BASE_API_URL = "https://api.football-data.org/v4";
 
 function apiFetch(endpoint) {
-  // Ahora llama a nuestro propio backend en Vercel
-  return fetch(`/api/${endpoint}`);
+    return fetch(`${CORS_PROXY}${BASE_API_URL}${endpoint}`, {
+        headers: { 'X-Auth-Token': FOOTBALL_DATA_KEY }
+    });
 }
 
 // ============ MAPEO DE NOMBRES ============
@@ -431,7 +481,7 @@ function renderResults() {
     if(!finished.length) { container.innerHTML = '<div class="empty-message">Aún no hay partidos finalizados</div>'; return; }
     let html = '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Local</th><th>vs</th><th>Visitante</th><th>Fecha</th></tr></thead><tbody>';
     for(let m of finished) {
-        html += `<tr><td class="player-cell"><img src="${getFlagUrl(m.homeTeam)}"> ${m.homeTeam}</td><td style="white-space:nowrap;">${m.homeScore} - ${m.awayScore}</td><td class="player-cell">${m.awayTeam} <img src="${getFlagUrl(m.awayTeam)}"></td><td style="white-space:nowrap; font-size:0.7rem;">${formatDateTime(m.datetime)}</td></tr>`;
+        html += `<tr><td class="player-cell"><img src="${getFlagUrl(m.homeTeam)}"> ${m.homeTeam}</td><td style="white-space:nowrap;">${m.homeScore} - ${m.awayScore}</td><td class="player-cell">${m.awayTeam} <img src="${getFlagUrl(m.awayTeam)}"></td><td style="white-space:nowrap; font-size:0.7rem;">${formatDateTime(m.datetime)}</td><tr>`;
     }
     html += '</tbody></table></div>';
     container.innerHTML = html;
@@ -465,21 +515,89 @@ function renderFixture(editMode = false) {
             <td style="font-size:0.7rem; white-space:nowrap;">${m.stadium || 'Por definir'}</td>`;
         if (editMode) {
             html += `<td><input type="number" class="fixture-input home-score" value="${m.homeScore ?? ''}" placeholder="-"></td>
-                     <td><input type="number" class="fixture-input away-score" value="${m.awayScore ?? ''}" placeholder="-"></td>`;
+                      <td><input type="number" class="fixture-input away-score" value="${m.awayScore ?? ''}" placeholder="-"></td>`;
         } else {
             html += `<td style="white-space:nowrap;">${resultado}</td>`;
         }
         html += `<td style="text-align:center;"><a href="${googleCalUrl}" target="_blank" style="color:#ffb347; text-decoration:none; font-size:1rem;">📅</a></td>`;
-        html += '</tr>';
+        html += `</tr>`;
     }
     html += '</tbody></table></div>';
     container.innerHTML = html;
-    // Añadir hint de desplazamiento si es necesario (ya está arriba)
 }
 
-// ==================== OBTENER IDs (proxy) ====================
+// ==================== TABLA DE GOLEADORES ====================
+let scorersData = [];
+const savedScorers = localStorage.getItem('worldcup2026_scorers');
+if (savedScorers) {
+    try {
+        scorersData = JSON.parse(savedScorers);
+        console.log("🥅 Goleadores cargados desde localStorage");
+    } catch(e) { console.warn("Error al cargar goleadores guardados"); }
+}
+async function fetchScorers() {
+    console.log("🥅 Obteniendo tabla de goleadores...");
+    try {
+        const res = await apiFetch(`/competitions/${COMPETITION_ID}/scorers`);
+        if (!res.ok) {
+            console.warn(`Error al obtener goleadores: ${res.status}`);
+            return false;
+        }
+        const data = await res.json();
+        if (data.scorers && data.scorers.length) {
+            scorersData = data.scorers;
+            localStorage.setItem('worldcup2026_scorers', JSON.stringify(scorersData));
+            console.log(`🥅 Goleadores obtenidos y guardados: ${scorersData.length}`);
+            return true;
+        } else if (data.scorers && data.scorers.length === 0) {
+            // No hay goleadores aún (ningún partido finalizado con goles)
+            console.log("🥅 No hay datos de goleadores aún");
+            return false;
+        }
+    } catch(e) {
+        console.error("Error en fetchScorers:", e);
+        return false;
+    }
+}
+function renderScorers() {
+    const container = document.getElementById('scorersContainer');
+    if (!container) return;
+    if (!scorersData.length) {
+        container.innerHTML = '<div class="empty-message">🥅 Aún no hay datos de goleadores. Los máximos anotadores aparecerán aquí cuando se registren goles.</div>';
+        return;
+    }
+    const sorted = [...scorersData].sort((a,b) => {
+        if (a.goals !== b.goals) return b.goals - a.goals;
+        return a.player.name.localeCompare(b.player.name);
+    });
+    let html = '<div style="overflow-x:auto;">';
+    html += '<table style="width:100%; border-collapse:collapse;">';
+    html += '<thead><tr>';
+    html += '<th>#</th><th>Jugador</th><th>Equipo</th><th>Goles</th><th>Asistencias</th><th>Penaltis</th>';
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < sorted.length; i++) {
+        const s = sorted[i];
+        const playerName = s.player.name;
+        const teamName = TEAM_MAP_REVERSE[s.team.name] || s.team.name;
+        const goals = s.goals;
+        const assists = s.assists ?? 0;
+        const penalties = s.penalties ?? 0;
+        html += `<tr>
+            <td class="scorer-position">${i+1}</td>
+            <td class="scorer-name" style="text-align:left;">${playerName}</td>
+            <td class="scorer-team"><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
+            <td class="scorer-goals">${goals}</td>
+            <td>${assists}</td>
+            <td>${penalties}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// ==================== OBTENER IDs ====================
 async function fetchTeamIds() {
-    console.log("🆔 Obteniendo IDs de equipos de la competición...");
+    console.log("🆔 Obteniendo IDs de equipos...");
     try {
         const res = await apiFetch(`/competitions/${COMPETITION_ID}/teams`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -500,9 +618,9 @@ async function fetchTeamIds() {
     } catch(e) { console.error("❌ Error al obtener IDs de equipos:", e); }
 }
 
-// ==================== OBTENER DETALLES ====================
+// ==================== OBTENER DETALLES (SOLO PARA PARTIDOS EN VIVO) ====================
 async function fetchMatchDetails(matchId, localMatch) {
-    console.log(`📡 Solicitando detalles del partido ID ${matchId}: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
+    console.log(`📡 Solicitando detalles en vivo del partido ID ${matchId}: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
     try {
         const res = await apiFetch(`/matches/${matchId}`);
         if (!res.ok) {
@@ -542,56 +660,83 @@ async function fetchMatchDetails(matchId, localMatch) {
     } catch(e) { console.error(`❌ Error en detalle del partido ${matchId}:`, e); return false; }
 }
 
-// ==================== CICLO PRINCIPAL ====================
+// ==================== CICLO PRINCIPAL OPTIMIZADO (SIN REPETIR PARTIDOS FINISHED) ====================
 let lastUpdateTime = 0;
+let consecutive429 = 0;
+let dynamicInterval = 120000; // 2 minutos base
+
 async function fetchAllData() {
     const now = Date.now();
-    if (now - lastUpdateTime < 60000) return;
+    if (now - lastUpdateTime < dynamicInterval) return;
     lastUpdateTime = now;
-    console.log("🚀 Iniciando ciclo de actualización desde football-data.org vía proxy...");
+    console.log("🚀 Iniciando ciclo de actualización optimizado...");
     if (Object.keys(teamIdMap).length === 0) {
-        console.log("⏳ Esperando mapeo de IDs de equipos...");
+        console.log("⏳ Esperando mapeo de IDs...");
         await fetchTeamIds();
         if (Object.keys(teamIdMap).length === 0) {
-            console.error("❌ No se pudo obtener el mapeo de IDs. Abortando actualización.");
+            console.error("❌ No se pudo obtener el mapeo de IDs. Abortando.");
             return;
         }
     }
     try {
+        // 1. Obtener lista de partidos (solo una petición)
         const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
-        if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
+        if (!listRes.ok) {
+            if (listRes.status === 429) {
+                consecutive429++;
+                const wait = Math.min(120000, 60000 * consecutive429);
+                console.warn(`⚠️ Límite excedido (429). Esperando ${wait/1000} segundos.`);
+                dynamicInterval = wait;
+                document.getElementById('lastUpdate').innerHTML = `⏳ Límite API alcanzado. Reintentando en ${wait/1000}s...`;
+                setTimeout(() => { dynamicInterval = 120000; fetchAllData(); }, wait);
+                return;
+            }
+            throw new Error(`HTTP ${listRes.status}`);
+        }
+        consecutive429 = 0;
+        dynamicInterval = 120000; // restaurar intervalo normal
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista recibida: ${apiMatches.length} partidos.`);
         if (!apiMatches.length) return;
+        
+        // 2. Crear mapa por IDs
         const matchesByTeamIds = {};
         for (let apiMatch of apiMatches) matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
-        const promises = [];
+        
+        // 3. Identificar partidos que necesitan detalles (solo en vivo o entretiempo)
+        const liveMatches = [];
         for (let localMatch of currentMatches) {
             const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
-            if (!homeId || !awayId) {
-                console.warn(`❌ No se encontró ID para ${localMatch.homeTeam} o ${localMatch.awayTeam}`);
-                continue;
-            }
+            if (!homeId || !awayId) continue;
             const apiMatch = matchesByTeamIds[`${homeId}_${awayId}`];
-            if (!apiMatch) {
-                console.warn(`❓ No se encontró en API el partido: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (IDs: ${homeId}/${awayId})`);
-                continue;
-            }
-            console.log(`🔍 Partido encontrado en API: ${localMatch.homeTeam} vs ${localMatch.awayTeam} -> estado API: ${apiMatch.status}`);
+            if (!apiMatch) continue;
             const status = apiMatch.status;
-            if (status === "FINISHED" || status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT") {
-                console.log(`➕ Se agregará a la cola de detalles: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (${status})`);
-                promises.push(fetchMatchDetails(apiMatch.id, localMatch));
-            } else {
-                console.log(`⏭️ Saltando (estado ${status}) - No necesita detalles: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
+            const isLive = (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT");
+            if (isLive) {
+                liveMatches.push({ apiMatch, localMatch });
+            } else if (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null)) {
+                // Si el partido está FINISHED pero aún no tenemos marcador, también lo pedimos una sola vez
+                liveMatches.push({ apiMatch, localMatch });
             }
         }
+        
+        console.log(`📡 Partidos que requieren actualización: ${liveMatches.length}`);
         let anyUpdate = false;
-        for (let i = 0; i < promises.length; i++) {
-            if (await promises[i]) anyUpdate = true;
-            if (i < promises.length - 1) await new Promise(r => setTimeout(r, 2000));
+        // Pedir detalles de cada partido en vivo (con espaciado de 2 segundos)
+        for (let i = 0; i < liveMatches.length; i++) {
+            const item = liveMatches[i];
+            const updated = await fetchMatchDetails(item.apiMatch.id, item.localMatch);
+            if (updated) anyUpdate = true;
+            if (i < liveMatches.length - 1) await new Promise(r => setTimeout(r, 2000));
         }
+        
+        // 4. Actualizar goleadores (solo una petición adicional)
+        const scorersUpdated = await fetchScorers();
+        if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none') {
+            renderScorers();
+        }
+        
         if (anyUpdate) {
             localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
             const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
@@ -603,16 +748,21 @@ async function fetchAllData() {
             if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
         }
         document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()}`;
-        console.log("✅ Ciclo de actualización completado.");
-    } catch(e) { console.error("❌ Error en ciclo de actualización:", e); document.getElementById('lastUpdate').innerHTML = `❌ Error: ${e.message}`; }
+        console.log("✅ Ciclo completado.");
+    } catch(e) {
+        console.error("❌ Error en ciclo:", e);
+        document.getElementById('lastUpdate').innerHTML = `❌ Error: ${e.message}`;
+    }
 }
 
 // ==================== INICIALIZACIÓN ====================
 (async function init() {
     await fetchTeamIds();
     renderGroups(); renderKnockout(); renderResults(); renderFixture(false);
-    setInterval(fetchAllData, 60000);
+    await fetchScorers(); renderScorers();
+    // Ejecutar primer ciclo inmediatamente y luego cada 2 minutos
     fetchAllData();
+    setInterval(fetchAllData, 120000); // 2 minutos
 })();
 
 // Pestañas
@@ -620,6 +770,7 @@ const btns = document.querySelectorAll('.tab-btn');
 const panels = {
     groups: document.getElementById('groupsPanel'),
     knockout: document.getElementById('knockoutPanel'),
+    scorers: document.getElementById('scorersPanel'),
     news: document.getElementById('newsPanel'),
     results: document.getElementById('resultsPanel'),
     fixture: document.getElementById('fixturePanel'),
@@ -636,6 +787,7 @@ for (let btn of btns) {
         if (tab === 'news') renderNews();
         if (tab === 'knockout') renderKnockout();
         if (tab === 'fixture') renderFixture(fixtureEditMode);
+        if (tab === 'scorers') renderScorers();
     });
 }
 // Botones de edición
