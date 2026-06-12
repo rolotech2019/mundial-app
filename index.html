@@ -704,21 +704,23 @@ async function fetchAllData() {
         for (let apiMatch of apiMatches) matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
         
         // 3. Identificar partidos que necesitan detalles (solo en vivo o entretiempo)
-        const liveMatches = [];
-        for (let localMatch of currentMatches) {
-            const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
-            if (!homeId || !awayId) continue;
-            const apiMatch = matchesByTeamIds[`${homeId}_${awayId}`];
-            if (!apiMatch) continue;
-            const status = apiMatch.status;
-            const isLive = (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT");
-            if (isLive) {
-                liveMatches.push({ apiMatch, localMatch });
-            } else if (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null)) {
-                // Si el partido está FINISHED pero aún no tenemos marcador, también lo pedimos una sola vez
-                liveMatches.push({ apiMatch, localMatch });
-            }
-        }
+     // 3. Identificar partidos que necesitan detalles (en vivo, entretiempo, O finalizados con marcador pendiente O que cambiaron a FINISHED recientemente)
+const matchesToUpdate = [];
+for (let localMatch of currentMatches) {
+    const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
+    if (!homeId || !awayId) continue;
+    const apiMatch = matchesByTeamIds[`${homeId}_${awayId}`];
+    if (!apiMatch) continue;
+    const status = apiMatch.status;
+    const isLive = (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HT");
+    const isFinishedNow = (status === "FINISHED" && localMatch.status !== "FINISHED");
+    const isFinishedWithoutScore = (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null));
+    
+    if (isLive || isFinishedNow || isFinishedWithoutScore) {
+        matchesToUpdate.push({ apiMatch, localMatch });
+        console.log(`➕ Se actualizará: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (API: ${status}, Local: ${localMatch.status})`);
+    }
+}
         
         console.log(`📡 Partidos que requieren actualización: ${liveMatches.length}`);
         let anyUpdate = false;
