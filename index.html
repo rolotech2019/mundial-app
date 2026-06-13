@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+   <script>
+  (function() {
+    // Evita bucles infinitos: solo ejecuta si no hay parámetro "_ts" en la URL
+    if (window.location.href.indexOf('_ts=') === -1) {
+      var timestamp = new Date().getTime();
+      var separator = window.location.href.indexOf('?') === -1 ? '?' : '&';
+      var newUrl = window.location.href + separator + '_ts=' + timestamp;
+      window.location.replace(newUrl);
+    }
+  })();
+</script> 
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
