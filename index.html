@@ -158,6 +158,12 @@
 #scorersContainer td {
     white-space: nowrap;
 }
+
+
+
+
+
+
 @media (max-width: 600px) {
     #scorersContainer th, 
     #scorersContainer td {
@@ -184,13 +190,51 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: #ffb347; border-radius: 10px; }
+	
+	
+	/* ================== CORRECCIÓN PARA TABLA DE CLASIFICACIÓN ================== */
+#standingsContainer {
+    overflow-x: auto;
+}
+#standingsContainer table {
+    min-width: 650px;
+    width: 100%;
+    white-space: normal !important;
+}
+#standingsContainer th,
+#standingsContainer td {
+    white-space: normal !important;
+    padding: 8px 4px;
+    font-size: 0.75rem;
+}
+#standingsContainer th:first-child,
+#standingsContainer td:first-child {
+    width: 50px;
+}
+#standingsContainer th:nth-child(2),
+#standingsContainer td:nth-child(2) {
+    text-align: left;
+    min-width: 120px;
+}
+@media (max-width: 600px) {
+    #standingsContainer table {
+        min-width: 500px;
+        font-size: 0.7rem;
+    }
+    #standingsContainer th, 
+    #standingsContainer td {
+        padding: 6px 2px;
+    }
+}
+	
+	
 </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>🏆 Mundial 2026</h1>
-        <p>Actualización automática cada 45 segundos (respetando límite API)</p>
+        
         <div id="countdownContainer" class="countdown">
             <div class="countdown-label">⚽ COMIENZA EN</div>
             <div class="countdown-timer">
@@ -200,9 +244,7 @@
                 <div class="countdown-unit"><div class="countdown-number" id="seconds">00</div><span>seg</span></div>
             </div>
         </div>
-        <div style="background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); border-radius: 40px; display: inline-block; padding: 10px 20px; margin: 10px auto 0; text-align: center; border: 1px solid rgba(255,180,70,0.5);">
-            <span style="color: #ffb347;">🎉 Ceremonia de Apertura 11/6 13:30</span>
-        </div>
+      
         <div class="last-update" id="lastUpdate">📅 Cargando datos...</div>
     </div>
 
@@ -230,7 +272,7 @@
     <div id="standingsPanel" class="panel" style="display: none;">
         <div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div>
     </div>
-    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 45 segundos (respetando límite gratuito de 10 peticiones/min).</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
+    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos desde football-data.org</p><p>Actualización automática.</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
     <footer>Datos oficiales vía football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
 </div>
@@ -683,25 +725,29 @@ function renderStandings() {
         if (a.points !== b.points) return b.points - a.points;
         return b.goalDifference - a.goalDifference;
     });
-    let html = '<div style="overflow-x:auto;">';
-    html += '<table class="data-table" style="width:100%; border-collapse:collapse;">';
+    let html = '<div style="overflow-x: auto; width: 100%;">';
+    // Quitamos la clase "data-table" para evitar conflictos
+    html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">';
     html += '<thead><tr>';
-    html += '<th>Pos</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th>';
-    html += '</table></thead><tbody>';
+    html += '<th style="padding: 8px 4px;">Pos</th><th style="padding: 8px 4px; text-align: left;">Equipo</th>';
+    html += '<th style="padding: 8px 4px;">PJ</th><th style="padding: 8px 4px;">G</th><th style="padding: 8px 4px;">E</th>';
+    html += '<th style="padding: 8px 4px;">P</th><th style="padding: 8px 4px;">GF</th><th style="padding: 8px 4px;">GC</th>';
+    html += '<th style="padding: 8px 4px;">DG</th><th style="padding: 8px 4px;">PTS</th>';
+    html += '</tr></thead><tbody>';
     for (let i = 0; i < sorted.length; i++) {
         const team = sorted[i];
         const teamName = TEAM_MAP_REVERSE[team.team.name] || team.team.name;
-        html += `<tr>
-            <td style="text-align:center; font-weight:bold;">${i+1}</td>
-            <td style="text-align:left;"><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
-            <td style="text-align:center;">${team.playedGames}</td>
-            <td style="text-align:center;">${team.won}</td>
-            <td style="text-align:center;">${team.draw}</td>
-            <td style="text-align:center;">${team.lost}</td>
-            <td style="text-align:center;">${team.goalsFor}</td>
-            <td style="text-align:center;">${team.goalsAgainst}</td>
-            <td style="text-align:center;">${team.goalDifference}</td>
-            <td style="text-align:center; font-weight:bold; color:#ffb347;">${team.points}</td>
+        html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
+            <td style="padding: 8px 4px; text-align: center; font-weight: bold;">${i+1}</td>
+            <td style="padding: 8px 4px; text-align: left; white-space: normal;"><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.playedGames}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.won}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.draw}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.lost}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.goalsFor}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.goalsAgainst}</td>
+            <td style="padding: 8px 4px; text-align: center;">${team.goalDifference}</td>
+            <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #ffb347;">${team.points}</td>
         </tr>`;
     }
     html += '</tbody></table></div>';
@@ -973,4 +1019,6 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
+
+
 
