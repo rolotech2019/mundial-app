@@ -3,24 +3,27 @@
 <head>
    <script>
   (function() {
-    // Evita bucles infinitos: solo ejecuta si no hay parámetro "_ts" en la URL
-    if (window.location.href.indexOf('_ts=') === -1) {
-      var timestamp = new Date().getTime();
-      var separator = window.location.href.indexOf('?') === -1 ? '?' : '&';
-      var newUrl = window.location.href + separator + '_ts=' + timestamp;
-      window.location.replace(newUrl);
+    // Evita recargas infinitas: solo una vez por sesión de navegación
+    if (!sessionStorage.getItem('ts_redirected')) {
+      if (window.location.href.indexOf('_ts=') === -1) {
+        var timestamp = new Date().getTime();
+        var separator = window.location.href.indexOf('?') === -1 ? '?' : '&';
+        var newUrl = window.location.href + separator + '_ts=' + timestamp;
+        sessionStorage.setItem('ts_redirected', 'true');
+        window.location.replace(newUrl);
+      }
     }
   })();
 </script> 
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>⚽ Mundial 2026 - App Oficial</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
-    /* ========== TUS ESTILOS ORIGINALES (NO MODIFICADOS) ========== */
+    /* ========== ESTILOS ORIGINALES (NO MODIFICADOS) ========== */
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0a2f3a 0%, #0a1f2a 100%); color: #fff; padding: 20px; min-height: 100vh; scroll-behavior: smooth; }
     .container { max-width: 1400px; margin: 0 auto; }
@@ -136,7 +139,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
-    table-layout: auto; /* permite que se ajuste, pero fijamos anchos mínimos */
+    table-layout: auto;
 }
 #scorersContainer th, 
 #scorersContainer td {
@@ -153,9 +156,8 @@
     border-bottom: 2px solid rgba(255,180,70,0.7);
 }
 #scorersContainer td {
-    white-space: nowrap;   /* evita saltos de línea dentro de la celda */
+    white-space: nowrap;
 }
-/* Para móviles, permitimos que el texto se ajuste si es necesario */
 @media (max-width: 600px) {
     #scorersContainer th, 
     #scorersContainer td {
@@ -168,12 +170,10 @@
         height: 14px;
     }
 }
-/* La primera columna (#) con ancho fijo */
 #scorersContainer th:first-child,
 #scorersContainer td:first-child {
     width: 40px;
 }
-/* La columna del nombre más ancha */
 #scorersContainer th:nth-child(2),
 #scorersContainer td:nth-child(2) {
     text-align: left;
@@ -190,7 +190,7 @@
 <div class="container">
     <div class="header">
         <h1>🏆 Mundial 2026</h1>
-        <p>Actualización automática cada 2 minutos (respeta límite API)</p>
+        <p>Actualización automática cada 45 segundos (respetando límite API)</p>
         <div id="countdownContainer" class="countdown">
             <div class="countdown-label">⚽ COMIENZA EN</div>
             <div class="countdown-timer">
@@ -227,13 +227,10 @@
         <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
         <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
     </div>
- <div id="standingsPanel" class="panel" style="display: none;">
-    <div class="data-container" id="standingsContainer">
-        ⏳ Cargando tabla de posiciones...
+    <div id="standingsPanel" class="panel" style="display: none;">
+        <div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div>
     </div>
-</div>
-    
-    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 2 minutos (respetando límite gratuito de 10 peticiones/min).</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
+    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos reales desde football-data.org</p><p>Actualización automática cada 45 segundos (respetando límite gratuito de 10 peticiones/min).</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
     <footer>Datos oficiales vía football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
 </div>
@@ -347,6 +344,8 @@ const OFFICIAL_MATCHES = [
     { id: "J5", group: "J", homeTeam: "Argelia", awayTeam: "Austria", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T22:00:00-04:00", stadium: "Estadio Kansas City" },
     { id: "J6", group: "J", homeTeam: "Jordania", awayTeam: "Argentina", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-27T22:00:00-04:00", stadium: "Estadio Dallas" }
 ];
+// ****************************************************************************
+
 const GROUP_TEAMS = {
     "A": ["México","Sudáfrica","Corea del Sur","República Checa"], "B": ["Canadá","Bosnia y Herzegovina","Catar","Suiza"],
     "C": ["Brasil","Marruecos","Haití","Escocia"], "D": ["Estados Unidos","Paraguay","Australia","Turquía"],
@@ -356,22 +355,22 @@ const GROUP_TEAMS = {
     "K": ["Portugal","RD Congo","Uzbekistán","Colombia"], "L": ["Inglaterra","Croacia","Ghana","Panamá"]
 };
 
-// ============ PERSISTENCIA ============
+// ============ PERSISTENCIA CON TIMESTAMPS ============
 let currentMatches;
 let knockoutMatches = [];
 const savedMatches = localStorage.getItem('worldcup2026_matches');
-const savedKnockout = localStorage.getItem('worldcup2026_knockout');
 if (savedMatches) {
     currentMatches = JSON.parse(savedMatches);
-    console.log("📀 Datos cargados desde localStorage");
+    console.log("📀 Datos de partidos cargados desde localStorage");
 } else {
     currentMatches = JSON.parse(JSON.stringify(OFFICIAL_MATCHES));
     localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
+    localStorage.setItem('worldcup2026_matches_ts', Date.now().toString());
     console.log("📀 Primera carga: fixture inicial guardado");
 }
+const savedKnockout = localStorage.getItem('worldcup2026_knockout');
 if (savedKnockout) knockoutMatches = JSON.parse(savedKnockout);
 
-// ============ MAPEO DE IDs ============
 let teamIdMap = {};
 
 // ==================== FUNCIONES AUXILIARES ====================
@@ -502,9 +501,9 @@ function renderResults() {
     if(!finished.length) { container.innerHTML = '<div class="empty-message">Aún no hay partidos finalizados</div>'; return; }
     let html = '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Local</th><th>vs</th><th>Visitante</th><th>Fecha</th></tr></thead><tbody>';
     for(let m of finished) {
-        html += `<tr><td class="player-cell"><img src="${getFlagUrl(m.homeTeam)}"> ${m.homeTeam}</td><td style="white-space:nowrap;">${m.homeScore} - ${m.awayScore}</td><td class="player-cell">${m.awayTeam} <img src="${getFlagUrl(m.awayTeam)}"></td><td style="white-space:nowrap; font-size:0.7rem;">${formatDateTime(m.datetime)}</td><tr>`;
+        html += `<tr><td class="player-cell"><img src="${getFlagUrl(m.homeTeam)}"> ${m.homeTeam}</td><td style="white-space:nowrap;">${m.homeScore} - ${m.awayScore}</td><td class="player-cell">${m.awayTeam} <img src="${getFlagUrl(m.awayTeam)}"></td><td style="white-space:nowrap; font-size:0.7rem;">${formatDateTime(m.datetime)}</td></tr>`;
     }
-    html += '</tbody></table></div>';
+    html += '</tbody><td></div>';
     container.innerHTML = html;
 }
 function getAllMatches() { return [...currentMatches, ...knockoutMatches].sort((a,b)=>new Date(a.datetime)-new Date(b.datetime)); }
@@ -520,7 +519,7 @@ function renderFixture(editMode = false) {
     html += '<th style="padding:8px 4px;">Fecha</th><th style="padding:8px 4px;">Grupo</th><th style="padding:8px 4px;">Local</th><th style="padding:8px 4px;">vs</th><th style="padding:8px 4px;">Visitante</th><th style="padding:8px 4px;">Estadio</th>';
     html += editMode ? '<th style="padding:8px 4px;">G.Loc</th><th style="padding:8px 4px;">G.Vis</th>' : '<th style="padding:8px 4px;">Resultado</th>';
     html += '<th style="padding:8px 4px;">📅</th>';
-    html += '</tr></thead><tbody>';
+    html += '<tr></thead><tbody>';
     for (const m of allMatches) {
         const fase = m.group || m.round || (m.id && m.id.startsWith('KO') ? 'Elim' : 'Grupo');
         const local = m.home || m.homeTeam;
@@ -536,7 +535,7 @@ function renderFixture(editMode = false) {
             <td style="font-size:0.7rem; white-space:nowrap;">${m.stadium || 'Por definir'}</td>`;
         if (editMode) {
             html += `<td><input type="number" class="fixture-input home-score" value="${m.homeScore ?? ''}" placeholder="-"></td>
-                      <td><input type="number" class="fixture-input away-score" value="${m.awayScore ?? ''}" placeholder="-"></td>`;
+                       <td><input type="number" class="fixture-input away-score" value="${m.awayScore ?? ''}" placeholder="-"></td>`;
         } else {
             html += `<td style="white-space:nowrap;">${resultado}</td>`;
         }
@@ -549,10 +548,13 @@ function renderFixture(editMode = false) {
 
 // ==================== TABLA DE GOLEADORES ====================
 let scorersData = [];
+let scorersTimestamp = 0;
 const savedScorers = localStorage.getItem('worldcup2026_scorers');
+const savedScorersTs = localStorage.getItem('worldcup2026_scorers_ts');
 if (savedScorers) {
     try {
         scorersData = JSON.parse(savedScorers);
+        scorersTimestamp = parseInt(savedScorersTs) || 0;
         console.log("🥅 Goleadores cargados desde localStorage");
     } catch(e) { console.warn("Error al cargar goleadores guardados"); }
 }
@@ -566,12 +568,18 @@ async function fetchScorers() {
         }
         const data = await res.json();
         if (data.scorers && data.scorers.length) {
-            scorersData = data.scorers;
-            localStorage.setItem('worldcup2026_scorers', JSON.stringify(scorersData));
-            console.log(`🥅 Goleadores obtenidos y guardados: ${scorersData.length}`);
+            const now = Date.now();
+            if (now > scorersTimestamp) {
+                scorersData = data.scorers;
+                scorersTimestamp = now;
+                localStorage.setItem('worldcup2026_scorers', JSON.stringify(scorersData));
+                localStorage.setItem('worldcup2026_scorers_ts', now.toString());
+                console.log(`🥅 Goleadores actualizados (${scorersData.length})`);
+            } else {
+                console.log("🥅 Goleadores no más recientes que los locales, se conservan locales.");
+            }
             return true;
-        } else if (data.scorers && data.scorers.length === 0) {
-            // No hay goleadores aún (ningún partido finalizado con goles)
+        } else {
             console.log("🥅 No hay datos de goleadores aún");
             return false;
         }
@@ -580,89 +588,6 @@ async function fetchScorers() {
         return false;
     }
 }
-
-
-// ==================== TABLA DE POSICIONES (CLASIFICACIÓN) ====================
-let standingsData = [];
-const savedStandings = localStorage.getItem('worldcup2026_standings');
-if (savedStandings) {
-    try {
-        standingsData = JSON.parse(savedStandings);
-        console.log("🏆 Clasificación cargada desde localStorage");
-    } catch(e) { console.warn("Error al cargar clasificación guardada"); }
-}
-
-async function fetchStandings() {
-    console.log("🏆 Obteniendo tabla de posiciones...");
-    try {
-        const res = await apiFetch(`/competitions/${COMPETITION_ID}/standings`);
-        if (!res.ok) {
-            console.warn(`Error al obtener clasificación: ${res.status}`);
-            return false;
-        }
-        const data = await res.json();
-        // La API devuelve un array "standings". Normalmente el primer elemento es la tabla TOTAL.
-        if (data.standings && data.standings.length > 0) {
-            // Buscar el standing de tipo "TOTAL" (tabla general)
-            const totalStanding = data.standings.find(s => s.type === "TOTAL");
-            if (totalStanding && totalStanding.table) {
-                standingsData = totalStanding.table;
-                localStorage.setItem('worldcup2026_standings', JSON.stringify(standingsData));
-                console.log(`🏆 Clasificación obtenida y guardada: ${standingsData.length} equipos`);
-                return true;
-            } else {
-                console.log("🏆 No se encontró tabla TOTAL en la respuesta");
-                return false;
-            }
-        } else {
-            console.log("🏆 No hay datos de clasificación aún");
-            return false;
-        }
-    } catch(e) {
-        console.error("Error en fetchStandings:", e);
-        return false;
-    }
-}
-
-function renderStandings() {
-    const container = document.getElementById('standingsContainer');
-    if (!container) return;
-    if (!standingsData.length) {
-        container.innerHTML = '<div class="empty-message">🏆 Aún no hay datos de clasificación. La tabla de posiciones aparecerá aquí cuando esté disponible.</div>';
-        return;
-    }
-    // Ordenar por puntos descendente y luego por diferencia de goles
-    const sorted = [...standingsData].sort((a,b) => {
-        if (a.points !== b.points) return b.points - a.points;
-        return b.goalDifference - a.goalDifference;
-    });
-    let html = '<div style="overflow-x:auto;">';
-    html += '<table class="data-table" style="width:100%; border-collapse:collapse;">';
-    html += '<thead><tr>';
-    html += '<th>Pos</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th>';
-    html += '</tr></thead><tbody>';
-    for (let i = 0; i < sorted.length; i++) {
-        const team = sorted[i];
-        const teamName = TEAM_MAP_REVERSE[team.team.name] || team.team.name;
-        html += `<tr>
-            <td style="text-align:center; font-weight:bold;">${i+1}</td>
-            <td style="text-align:left;"><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
-            <td style="text-align:center;">${team.playedGames}</td>
-            <td style="text-align:center;">${team.won}</td>
-            <td style="text-align:center;">${team.draw}</td>
-            <td style="text-align:center;">${team.lost}</td>
-            <td style="text-align:center;">${team.goalsFor}</td>
-            <td style="text-align:center;">${team.goalsAgainst}</td>
-            <td style="text-align:center;">${team.goalDifference}</td>
-            <td style="text-align:center; font-weight:bold; color:#ffb347;">${team.points}</td>
-        </tr>`;
-    }
-    html += '</tbody></table></div>';
-    container.innerHTML = html;
-}
-
-
-    
 function renderScorers() {
     const container = document.getElementById('scorersContainer');
     if (!container) return;
@@ -699,15 +624,99 @@ function renderScorers() {
     container.innerHTML = html;
 }
 
+// ==================== TABLA DE POSICIONES ====================
+let standingsData = [];
+let standingsTimestamp = 0;
+const savedStandings = localStorage.getItem('worldcup2026_standings');
+const savedStandingsTs = localStorage.getItem('worldcup2026_standings_ts');
+if (savedStandings) {
+    try {
+        standingsData = JSON.parse(savedStandings);
+        standingsTimestamp = parseInt(savedStandingsTs) || 0;
+        console.log("🏆 Clasificación cargada desde localStorage");
+    } catch(e) { console.warn("Error al cargar clasificación guardada"); }
+}
+async function fetchStandings() {
+    console.log("🏆 Obteniendo tabla de posiciones...");
+    try {
+        const res = await apiFetch(`/competitions/${COMPETITION_ID}/standings`);
+        if (!res.ok) {
+            console.warn(`Error al obtener clasificación: ${res.status}`);
+            return false;
+        }
+        const data = await res.json();
+        if (data.standings && data.standings.length > 0) {
+            const totalStanding = data.standings.find(s => s.type === "TOTAL");
+            if (totalStanding && totalStanding.table) {
+                const now = Date.now();
+                if (now > standingsTimestamp) {
+                    standingsData = totalStanding.table;
+                    standingsTimestamp = now;
+                    localStorage.setItem('worldcup2026_standings', JSON.stringify(standingsData));
+                    localStorage.setItem('worldcup2026_standings_ts', now.toString());
+                    console.log(`🏆 Clasificación actualizada (${standingsData.length} equipos)`);
+                } else {
+                    console.log("🏆 Clasificación no más reciente, se conserva local.");
+                }
+                return true;
+            } else {
+                console.log("🏆 No se encontró tabla TOTAL en la respuesta");
+                return false;
+            }
+        } else {
+            console.log("🏆 No hay datos de clasificación aún");
+            return false;
+        }
+    } catch(e) {
+        console.error("Error en fetchStandings:", e);
+        return false;
+    }
+}
+function renderStandings() {
+    const container = document.getElementById('standingsContainer');
+    if (!container) return;
+    if (!standingsData.length) {
+        container.innerHTML = '<div class="empty-message">🏆 Aún no hay datos de clasificación. La tabla de posiciones aparecerá aquí cuando esté disponible.</div>';
+        return;
+    }
+    const sorted = [...standingsData].sort((a,b) => {
+        if (a.points !== b.points) return b.points - a.points;
+        return b.goalDifference - a.goalDifference;
+    });
+    let html = '<div style="overflow-x:auto;">';
+    html += '<table class="data-table" style="width:100%; border-collapse:collapse;">';
+    html += '<thead><tr>';
+    html += '<th>Pos</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th>';
+    html += '</table></thead><tbody>';
+    for (let i = 0; i < sorted.length; i++) {
+        const team = sorted[i];
+        const teamName = TEAM_MAP_REVERSE[team.team.name] || team.team.name;
+        html += `<tr>
+            <td style="text-align:center; font-weight:bold;">${i+1}</td>
+            <td style="text-align:left;"><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
+            <td style="text-align:center;">${team.playedGames}</td>
+            <td style="text-align:center;">${team.won}</td>
+            <td style="text-align:center;">${team.draw}</td>
+            <td style="text-align:center;">${team.lost}</td>
+            <td style="text-align:center;">${team.goalsFor}</td>
+            <td style="text-align:center;">${team.goalsAgainst}</td>
+            <td style="text-align:center;">${team.goalDifference}</td>
+            <td style="text-align:center; font-weight:bold; color:#ffb347;">${team.points}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
 // ==================== OBTENER IDs ====================
 async function fetchTeamIds() {
+    if (Object.keys(teamIdMap).length > 0) return;
     console.log("🆔 Obteniendo IDs de equipos...");
     try {
         const res = await apiFetch(`/competitions/${COMPETITION_ID}/teams`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const teams = data.teams || [];
-        console.log(`🆔 Equipos obtenidos: ${teams.length}`);
         for (let team of teams) {
             const englishName = team.name;
             const spanishName = TEAM_MAP_REVERSE[englishName];
@@ -722,9 +731,9 @@ async function fetchTeamIds() {
     } catch(e) { console.error("❌ Error al obtener IDs de equipos:", e); }
 }
 
-// ==================== OBTENER DETALLES (SOLO PARA PARTIDOS EN VIVO) ====================
+// ==================== OBTENER DETALLES DE PARTIDO ====================
 async function fetchMatchDetails(matchId, localMatch) {
-    console.log(`📡 Solicitando detalles en vivo del partido ID ${matchId}: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
+    console.log(`📡 Solicitando detalles del partido ID ${matchId}: ${localMatch.homeTeam} vs ${localMatch.awayTeam}`);
     try {
         const res = await apiFetch(`/matches/${matchId}`);
         if (!res.ok) {
@@ -732,11 +741,6 @@ async function fetchMatchDetails(matchId, localMatch) {
             return false;
         }
         const detail = await res.json();
-        console.log(`📝 Datos detallados de ${localMatch.homeTeam} vs ${localMatch.awayTeam}:`, {
-            status: detail.status,
-            fullTime: detail.score?.fullTime,
-            halfTime: detail.score?.halfTime
-        });
         let newHome = null, newAway = null;
         if (detail.score?.fullTime?.home !== undefined && detail.score?.fullTime?.away !== undefined) {
             newHome = detail.score.fullTime.home;
@@ -764,40 +768,40 @@ async function fetchMatchDetails(matchId, localMatch) {
     } catch(e) { console.error(`❌ Error en detalle del partido ${matchId}:`, e); return false; }
 }
 
-// ==================== CICLO PRINCIPAL OPTIMIZADO (SIN REPETIR PARTIDOS FINISHED) ====================
+// ==================== CICLO PRINCIPAL OPTIMIZADO ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
-let dynamicInterval = 120000; // 2 minutos base
+let currentInterval = 45000; // 45 segundos
+let isUpdating = false;
 
 async function fetchAllData() {
+    if (isUpdating) return;
     const now = Date.now();
-    if (now - lastUpdateTime < dynamicInterval) return;
+    if (now - lastUpdateTime < currentInterval) return;
     lastUpdateTime = now;
-    console.log("🚀 Iniciando ciclo de actualización optimizado...");
+    isUpdating = true;
+    console.log("🚀 Iniciando ciclo de actualización...");
+    await fetchTeamIds();
     if (Object.keys(teamIdMap).length === 0) {
-        console.log("⏳ Esperando mapeo de IDs...");
-        await fetchTeamIds();
-        if (Object.keys(teamIdMap).length === 0) {
-            console.error("❌ No se pudo obtener el mapeo de IDs. Abortando.");
-            return;
-        }
+        console.error("❌ No se pudo obtener el mapeo de IDs. Abortando.");
+        isUpdating = false;
+        return;
     }
     try {
         const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (!listRes.ok) {
             if (listRes.status === 429) {
                 consecutive429++;
-                const wait = Math.min(60000, 30000 * consecutive429);
+                const wait = Math.min(120000, 30000 * consecutive429);
                 console.warn(`⚠️ Límite excedido (429). Esperando ${wait/1000} segundos.`);
-                dynamicInterval = wait;
-                document.getElementById('lastUpdate').innerHTML = `⏳ Límite API alcanzado. Reintentando en ${wait/1000}s...`;
-                setTimeout(() => { dynamicInterval = 60000; fetchAllData(); }, wait);
+                currentInterval = wait;
+                setTimeout(() => { currentInterval = 45000; isUpdating = false; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        dynamicInterval = 60000; // Restaurar a 1 minuto (más reactivo)
+        currentInterval = 45000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista recibida: ${apiMatches.length} partidos.`);
@@ -807,8 +811,7 @@ async function fetchAllData() {
         for (let apiMatch of apiMatches)
             matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
         
-        // Colección de partidos que requieren actualización
-        const matchesToUpdate = [];
+        const toUpdate = [];
         for (let localMatch of currentMatches) {
             const homeId = teamIdMap[localMatch.homeTeam], awayId = teamIdMap[localMatch.awayTeam];
             if (!homeId || !awayId) continue;
@@ -819,35 +822,34 @@ async function fetchAllData() {
             const justFinished = (status === "FINISHED" && localMatch.status !== "FINISHED");
             const noScoreYet = (status === "FINISHED" && (localMatch.homeScore === null || localMatch.awayScore === null));
             if (isLive || justFinished || noScoreYet) {
-                matchesToUpdate.push({ apiMatch, localMatch });
+                toUpdate.push({ apiMatch, localMatch });
                 console.log(`➕ Pendiente: ${localMatch.homeTeam} vs ${localMatch.awayTeam} (API: ${status})`);
             }
         }
         
-        console.log(`📡 Partidos a actualizar: ${matchesToUpdate.length}`);
+        const MAX_DETAILS_PER_CYCLE = 4;
+        const updatesToRun = toUpdate.slice(0, MAX_DETAILS_PER_CYCLE);
+        console.log(`📡 Partidos a actualizar en este ciclo: ${updatesToRun.length} (de ${toUpdate.length} totales)`);
+        
         let anyUpdate = false;
-        for (let i = 0; i < matchesToUpdate.length; i++) {
-            const item = matchesToUpdate[i];
+        for (let i = 0; i < updatesToRun.length; i++) {
+            const item = updatesToRun[i];
             const updated = await fetchMatchDetails(item.apiMatch.id, item.localMatch);
             if (updated) anyUpdate = true;
-            if (i < matchesToUpdate.length - 1) await new Promise(r => setTimeout(r, 2000));
+            if (i < updatesToRun.length - 1) await new Promise(r => setTimeout(r, 2000));
         }
         
         const scorersUpdated = await fetchScorers();
         if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none')
             renderScorers();
-
-
-        // Actualizar clasificación
-const standingsUpdated = await fetchStandings();
-if (standingsUpdated && document.getElementById('standingsPanel').style.display !== 'none') {
-    renderStandings();
-}
-
-
+        
+        const standingsUpdated = await fetchStandings();
+        if (standingsUpdated && document.getElementById('standingsPanel').style.display !== 'none')
+            renderStandings();
         
         if (anyUpdate) {
             localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
+            localStorage.setItem('worldcup2026_matches_ts', Date.now().toString());
             const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
             if (allGroupFinished && knockoutMatches.length === 0) {
                 knockoutMatches = generateKnockoutStages(currentMatches);
@@ -862,6 +864,8 @@ if (standingsUpdated && document.getElementById('standingsPanel').style.display 
     } catch(e) {
         console.error("❌ Error en ciclo:", e);
         document.getElementById('lastUpdate').innerHTML = `❌ Error: ${e.message}`;
+    } finally {
+        isUpdating = false;
     }
 }
 
@@ -869,14 +873,15 @@ if (standingsUpdated && document.getElementById('standingsPanel').style.display 
 (async function init() {
     await fetchTeamIds();
     renderGroups(); renderKnockout(); renderResults(); renderFixture(false);
-    await fetchScorers(); renderScorers();
-      await fetchStandings(); renderStandings();
-    // Ejecutar primer ciclo inmediatamente y luego cada 2 minutos
-  fetchAllData();
-setInterval(fetchAllData, 60000); // 1 minuto (más reactivo)
+    renderScorers();
+    renderStandings();
+    await fetchScorers(); renderScorers(); // intentar actualización inmediata
+    await fetchStandings(); renderStandings();
+    fetchAllData();
+    setInterval(fetchAllData, 45000);
 })();
 
-// Pestañas
+// ==================== PESTAÑAS ====================
 const btns = document.querySelectorAll('.tab-btn');
 const panels = {
     groups: document.getElementById('groupsPanel'),
@@ -903,7 +908,8 @@ for (let btn of btns) {
         if (tab === 'scorers') renderScorers();
     });
 }
-// Botones de edición
+
+// ==================== BOTONES DE EDICIÓN ====================
 const editBtn = document.getElementById('editResultsBtn');
 const saveBtn = document.getElementById('saveResultsBtn');
 if (editBtn && saveBtn) {
@@ -939,7 +945,8 @@ if (editBtn && saveBtn) {
         saveBtn.style.display = 'none';
     });
 }
-// Cuenta regresiva
+
+// ==================== CUENTA REGRESIVA ====================
 setInterval(() => {
     let diff = WORLD_CUP_START - new Date();
     if (diff <= 0) document.getElementById('countdownContainer').innerHTML = '<div class="countdown-label">⚽ MUNDIAL EN MARCHA</div>';
@@ -950,9 +957,13 @@ setInterval(() => {
         document.getElementById('seconds').textContent = Math.floor((diff % 60000) / 1000).toString().padStart(2,'0');
     }
 }, 1000);
+
+// ==================== SCROLL UP ====================
 const scrollUpBtn = document.getElementById('scrollUpBtn');
 window.addEventListener('scroll', () => scrollUpBtn.style.display = window.scrollY > 400 ? 'flex' : 'none');
 scrollUpBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+// ==================== MÚSICA (OPCIONAL) ====================
 const audio = new Audio('mundial-theme.mp3');
 audio.loop = false;
 let introPlayed = false;
@@ -962,5 +973,4 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
 
