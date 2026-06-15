@@ -327,6 +327,12 @@ if (savedMatches) {
 const savedKnockout = localStorage.getItem('worldcup2026_knockout');
 if (savedKnockout) knockoutMatches = JSON.parse(savedKnockout);
 
+// Asegurar que todos los partidos tengan la propiedad 'elapsed' (para mostrar minuto)
+currentMatches.forEach(match => {
+    if (match.elapsed === undefined) match.elapsed = null;
+});
+// ==================================
+
 let teamIdMap = {};
 
 // ==================== FUNCIONES AUXILIARES ====================
@@ -1036,7 +1042,6 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
 
 
 
