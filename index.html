@@ -824,7 +824,7 @@ async function fetchLiveWithFallback() {
         apiFootballDailyCalls = 0;
         lastApiFootballReset = now;
     }
-    if (useApiFootballForLive && apiFootballDailyCalls < 100) {
+    if (useApiFootballForLive && apiFootballDailyCalls < 95) {
         try {
             const res = await apiFootballFetch('/fixtures?live=all');
             if (res.ok) {
@@ -964,7 +964,7 @@ async function updateFinishedMatches(apiMatchesList) {
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
-let currentInterval = 45000;
+let currentInterval = 120000;
 let isUpdating = false;
 
 async function fetchAllData() {
@@ -987,7 +987,7 @@ async function fetchAllData() {
                 const wait = Math.min(120000, 30000 * consecutive429);
                 console.warn(`⚠️ Límite excedido (429). Esperando ${wait/1000} segundos.`);
                 currentInterval = wait;
-                setTimeout(() => { currentInterval = 45000; isUpdating = false; fetchAllData(); }, wait);
+                setTimeout(() => { currentInterval = 120000; isUpdating = false; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
