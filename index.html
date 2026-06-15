@@ -188,34 +188,25 @@ const TIMEZONE = "America/La_Paz";
 const WORLD_CUP_START = new Date("2026-06-11T15:00:00-04:00");
 const COMPETITION_ID = "WC";
 
-const CORS_PROXY = "https://corsproxy.io/";
+const WORKER_URL = "https://cool-hat-282c.rolmen-z.workers.dev/?url=";
 const BASE_API_URL = "https://api.football-data.org/v4";
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 
-// Función para football-data.org (NO TOCADA)
+// Función para football-data.org a través del Worker
 function apiFetch(endpoint) {
-    return fetch(`${CORS_PROXY}${BASE_API_URL}${endpoint}`, {
+    const fullUrl = `${BASE_API_URL}${endpoint}`;
+    return fetch(`${WORKER_URL}${encodeURIComponent(fullUrl)}`, {
         headers: { 'X-Auth-Token': FOOTBALL_DATA_KEY }
     });
 }
 
-// ============ FUNCIÓN API-FOOTBALL CORREGIDA (SIN PARÁMETROS LEAGUE/SEASON) ============
+// Función para API-Football a través del Worker
 function apiFootballFetch(endpoint) {
-    // Construir la URL base con el proxy CORS
-    let url = `${CORS_PROXY}${API_FOOTBALL_BASE}${endpoint}`;
-    console.log(`🌐 [API-Football] Solicitando a: ${url}`);
-    
-    return fetch(url, {
+    const fullUrl = `${API_FOOTBALL_BASE}${endpoint}`;
+    return fetch(`${WORKER_URL}${encodeURIComponent(fullUrl)}`, {
         headers: { 'x-apisports-key': API_FOOTBALL_KEY }
-    }).then(response => {
-        console.log(`📡 [API-Football] Respuesta recibida. Status: ${response.status}`);
-        return response;
-    }).catch(error => {
-        console.error(`❌ [API-Football] Error de conexión:`, error);
-        throw error;
     });
 }
-
 let useApiFootballForLive = true;
 let apiFootballDailyCalls = 0;
 let lastApiFootballReset = Date.now();
