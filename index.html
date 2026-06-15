@@ -383,9 +383,21 @@ function renderGroups() {
         html += `<div class="group-card"><div class="group-header">Grupo ${gl}</div><div class="teams-list">${teams.map(t => `<div class="team-badge"><img src="${getFlagUrl(t)}"><span>${getTeamCode(t)}</span></div>`).join('')}</div><div class="matches-list">`;
         for (let m of matches) {
             let statusText = "📅 Programado", statusClass = "", scoreDisplay = "vs";
-            if (m.status === "LIVE") { statusText = "🟢 EN VIVO"; statusClass = "live"; scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`; }
-            else if (m.status === "HT") { statusText = "⏸️ Medio tiempo"; statusClass = "live"; scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`; }
-            else if (m.status === "FINISHED" && m.homeScore !== null) { statusText = "✅ Finalizado"; scoreDisplay = `${m.homeScore} - ${m.awayScore}`; }
+            if (m.status === "LIVE") {
+                // Mostrar el minuto si existe (desde API-Football)
+                statusText = m.elapsed ? `🟢 EN VIVO (${m.elapsed}')` : "🟢 EN VIVO";
+                statusClass = "live";
+                scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`;
+            }
+            else if (m.status === "HT") {
+                statusText = "⏸️ Medio tiempo";
+                statusClass = "live";
+                scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`;
+            }
+            else if (m.status === "FINISHED" && m.homeScore !== null) {
+                statusText = "✅ Finalizado";
+                scoreDisplay = `${m.homeScore} - ${m.awayScore}`;
+            }
             html += `<div class="match-item"><div class="match-teams"><div class="team"><img src="${getFlagUrl(m.homeTeam)}"><span class="team-name">${m.homeTeam}</span></div><div class="score">${scoreDisplay}</div><div class="team"><span class="team-name">${m.awayTeam}</span><img src="${getFlagUrl(m.awayTeam)}"></div></div><div class="match-info"><span>🏟️ ${m.stadium}</span><span>⏰ ${formatDateTime(m.datetime)}</span><span class="status-badge ${statusClass}">${statusText}</span></div></div>`;
         }
         html += `</div></div>`;
@@ -754,6 +766,7 @@ async function updateLiveMatches() {
     const result = await fetchLiveWithFallback();
     if (!result.data || result.data.length === 0) return false;
     let anyUpdate = false;
+
     if (result.source === 'api-football') {
         for (let apiMatch of result.data) {
             const apiHomeName = apiMatch.teams.home.name;
@@ -763,6 +776,7 @@ async function updateLiveMatches() {
             const localMatch = currentMatches.find(m => m.homeTeam === localHome && m.awayTeam === localAway);
             if (localMatch) {
                 const st = apiMatch.fixture.status.short;
+                const elapsed = apiMatch.fixture.status.elapsed; // 🆕 Minuto actual
                 let newStatus = localMatch.status;
                 if (st === "FT" || st === "AET" || st === "PEN") newStatus = "FINISHED";
                 else if (st === "HT") newStatus = "HT";
@@ -770,45 +784,46 @@ async function updateLiveMatches() {
                 else newStatus = "SCHEDULED";
                 const newHome = apiMatch.goals.home;
                 const newAway = apiMatch.goals.away;
-                if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
+                if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore || elapsed !== localMatch.elapsed) {
                     localMatch.status = newStatus;
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
+                    localMatch.elapsed = elapsed; // 🆕 Guardamos el minuto
                     anyUpdate = true;
-                    console.log(`🟢 [API-Football] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus})`);
+                    console.log(`🟢 [API-Football] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus}) minuto ${elapsed}`);
                 }
             } else {
                 console.warn(`⚠️ [API-Football] Partido no encontrado en fixture local: ${apiHomeName} vs ${apiAwayName}`);
             }
         }
-    } else {
-        for (let apiMatch of result.data) {
-            const localHome = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
-            const localAway = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
-            const localMatch = currentMatches.find(m => m.homeTeam === localHome && m.awayTeam === localAway);
-            if (localMatch) {
-                const status = apiMatch.status;
-                let newStatus = localMatch.status;
-                if (status === "FINISHED") newStatus = "FINISHED";
-                else if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED") newStatus = "LIVE";
-                else if (status === "HT") newStatus = "HT";
-                else newStatus = "SCHEDULED";
-                let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
-                let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
-                if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
-                    localMatch.status = newStatus;
-                    localMatch.homeScore = newHome;
-                    localMatch.awayScore = newAway;
-                    anyUpdate = true;
-                    console.log(`🟢 [football-data.org] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus})`);
-                }
+} else {  // Esto es el bloque para football-data.org
+    for (let apiMatch of result.data) {
+        const localHome = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
+        const localAway = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
+        const localMatch = currentMatches.find(m => m.homeTeam === localHome && m.awayTeam === localAway);
+        if (localMatch) {
+            const status = apiMatch.status;
+            let newStatus = localMatch.status;
+            if (status === "FINISHED") newStatus = "FINISHED";
+            else if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED") newStatus = "LIVE";
+            else if (status === "HT") newStatus = "HT";
+            else newStatus = "SCHEDULED";
+            let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
+            let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
+            if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
+                localMatch.status = newStatus;
+                localMatch.homeScore = newHome;
+                localMatch.awayScore = newAway;
+                localMatch.elapsed = null;  // 🆕 LÍNEA AGREGADA: el minuto no está disponible en esta API
+                anyUpdate = true;
+                console.log(`🟢 [football-data.org] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus})`);
             }
         }
     }
+}
     return anyUpdate;
 }
 
-// ==================== ACTUALIZAR RESULTADOS FINALIZADOS ====================
 async function updateFinishedMatches(apiMatchesList) {
     let anyUpdate = false;
     for (let apiMatch of apiMatchesList) {
@@ -823,6 +838,7 @@ async function updateFinishedMatches(apiMatchesList) {
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
                     localMatch.status = "FINISHED";
+                    localMatch.elapsed = null; // Partido terminado, no mostramos minuto
                     anyUpdate = true;
                     console.log(`✅ [Resultado final] ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`);
                 }
@@ -831,7 +847,6 @@ async function updateFinishedMatches(apiMatchesList) {
     }
     return anyUpdate;
 }
-
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
