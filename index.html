@@ -401,12 +401,66 @@ function apiFetch(endpoint) {
     });
 }
 
+
+
+
+const API_FOOTBALL_TEAM_IDS = {
+  "México": 16, "Sudáfrica": 87, "Corea del Sur": 17, "República Checa": 38,
+  "Canadá": 31, "Bosnia y Herzegovina": 28, "Catar": 11, "Suiza": 15,
+  "Brasil": 6, "Marruecos": 29, "Haití": 86, "Escocia": 20,
+  "Estados Unidos": 7, "Paraguay": 22, "Australia": 19, "Turquía": 10,
+  "Alemania": 25, "Curazao": 83, "Costa de Marfil": 30, "Ecuador": 24,
+  "Países Bajos": 8, "Japón": 12, "Suecia": 14, "Túnez": 32,
+  "Bélgica": 1, "Egipto": 33, "Irán": 21, "Nueva Zelanda": 78,
+  "España": 9, "Cabo Verde": 41, "Arabia Saudita": 13, "Uruguay": 5,
+  "Francia": 2, "Senegal": 34, "Irak": 72, "Noruega": 35,
+  "Argentina": 26, "Argelia": 36, "Austria": 18, "Jordania": 77,
+  "Portugal": 3, "RD Congo": 43, "Uzbekistán": 42, "Colombia": 23,
+  "Inglaterra": 10, "Croacia": 4, "Ghana": 37, "Panamá": 39
+};
+
+
+
+
+
+
 function apiFootballFetch(endpoint) {
     const fullUrl = `${API_FOOTBALL_BASE}${endpoint}`;
     return fetch(`${WORKER_URL}${encodeURIComponent(fullUrl)}`, {
         headers: { 'x-apisports-key': API_FOOTBALL_KEY }
     });
 }
+
+
+
+
+
+async function fetchApiFootballSquad(teamName) {
+  const teamId = API_FOOTBALL_TEAM_IDS[teamName];
+  if (!teamId) return null;
+  try {
+    const res = await apiFootballFetch(`/players/squads?team=${teamId}`);
+    const data = await res.json();
+    if (data.response && data.response.length) {
+      // La respuesta tiene { team: {...}, players: [...] }
+      return data.response[0].players.map(p => ({
+        name: p.name,
+        position: p.position,
+        dateOfBirth: p.birth?.date || null,
+        nationality: p.nationality,
+        shirtNumber: p.number || null   // ← dorsal real
+      }));
+    }
+  } catch(e) {
+    console.error("Error API‑Football squad:", e);
+  }
+  return null;
+}
+
+
+
+
+
 let useApiFootballForLive = true;
 let apiFootballDailyCalls = 0;
 let lastApiFootballReset = Date.now();
@@ -875,30 +929,37 @@ function renderStandings() {
 }
 
 // ==================== PLANTILLA DE EQUIPOS (SQUAD) ====================
-async function fetchTeamSquad(teamId) {
-    const cacheKey = `team_squad_${teamId}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-        try {
-            const data = JSON.parse(cached);
-            console.log(`📋 Plantilla de ${teamId} cargada desde caché`);
-            return data;
-        } catch(e) { console.warn("Error al parsear caché"); }
+async function fetchTeamSquad(teamId, teamName) {
+  const cacheKey = `team_squad_${teamId}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) {}
+  }
+
+  // 1. Intentamos football-data.org (rápido, pero sin dorsales)
+  let squad = [];
+  try {
+    const res = await apiFetch(`/teams/${teamId}`);
+    if (res.ok) {
+      const data = await res.json();
+      squad = data.squad || [];
     }
-    try {
-        const res = await apiFetch(`/teams/${teamId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const squad = data.squad || [];
-        if (squad.length) {
-            localStorage.setItem(cacheKey, JSON.stringify(squad));
-            console.log(`📋 Plantilla de ${teamId} guardada (${squad.length} jugadores)`);
-        }
-        return squad;
-    } catch(e) {
-        console.error("Error al obtener plantilla:", e);
-        return [];
+  } catch(e) {}
+
+  // 2. Si no hay dorsales (undefined o null), pedimos a API‑Football
+  const tieneDorsales = squad.length > 0 && squad.some(p => p.shirtNumber != null);
+  if (!tieneDorsales && teamName) {
+    const apiSquad = await fetchApiFootballSquad(teamName);
+    if (apiSquad && apiSquad.length) {
+      squad = apiSquad;   // reemplazamos completamente
     }
+  }
+
+  // Guardamos en caché (si tenemos algo)
+  if (squad.length) {
+    localStorage.setItem(cacheKey, JSON.stringify(squad));
+  }
+  return squad;
 }
 
 function renderSquadModal(squad, teamName) {
@@ -975,7 +1036,7 @@ async function showTeamSquad(teamName) {
         title.textContent = `❌ Error`;
         return;
     }
-    const squad = await fetchTeamSquad(teamId);
+   const squad = await fetchTeamSquad(teamId, teamName);
     renderSquadModal(squad, teamName);
 }
 
