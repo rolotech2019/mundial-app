@@ -608,7 +608,7 @@ function renderFixture(editMode = false) {
         const fase = m.group || m.round || (m.id && m.id.startsWith('KO') ? 'Elim' : 'Grupo');
         const local = m.home || m.homeTeam;
         const visitante = m.away || m.awayTeam;
-        let resultado = (m.status === "FINISHED" && m.homeScore !== null) ? `${m.homeScore} - ${m.awayScore}` : (m.status === "LIVE" ? "En vivo" : "Programado");
+        let resultado = (m.status === "FINISHED" && m.homeScore !== null) ? `${m.homeScore} - ${m.awayScore}` : (m.status === "LIVE" ? (m.elapsed ? `En vivo (${m.elapsed}')` : "En vivo") : "Programado");
         const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(local + ' vs ' + visitante)}&dates=${formatGoogleCalendarDate(m.datetime)}/${formatGoogleCalendarDate(m.datetime)}&details=Partido+del+Mundial+2026&location=${encodeURIComponent(m.stadium || 'Estadio')}`;
 
         html += `<tr data-id="${m.id}">`;
@@ -704,7 +704,7 @@ function renderScorers() {
             <td>${penalties}</td>
         </tr>`;
     }
-    html += '</tbody></div>';
+    html += '</tbody></table></div>';
     container.innerHTML = html;
 }
 
@@ -824,13 +824,13 @@ async function fetchLiveWithFallback() {
         apiFootballDailyCalls = 0;
         lastApiFootballReset = now;
     }
-    if (useApiFootballForLive && apiFootballDailyCalls < 95) {
+    if (useApiFootballForLive && apiFootballDailyCalls < 100) {
         try {
             const res = await apiFootballFetch('/fixtures?live=all');
             if (res.ok) {
                 apiFootballDailyCalls++;
                 const data = await res.json();
-                console.log("📦 [API-Football] Datos recibidos:", JSON.stringify(data, null, 2));
+             console.log(`📦 [API-Football] Datos recibidos: ${data.response?.length || 0} partidos totales`);
                 if (data.response && data.response.length) {
                     // Filtrar SOLO los partidos del Mundial (league.id === 1)
                     const worldCupMatches = data.response.filter(m => m.league.id === 1);
@@ -993,7 +993,7 @@ async function fetchAllData() {
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        currentInterval = 45000;
+        currentInterval = 60000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista completa desde football-data.org: ${apiMatches.length} partidos.`);
@@ -1059,7 +1059,7 @@ async function fetchAllData() {
     renderStandings();
     await fetchScorers(); renderScorers();
     fetchAllData();
-    setInterval(fetchAllData, 45000);
+  setInterval(fetchAllData, currentInterval);
 })();
 
 // ==================== PESTAÑAS ====================
