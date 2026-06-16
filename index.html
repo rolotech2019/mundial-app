@@ -48,8 +48,8 @@
     .group-card:hover { transform: translateY(-6px); box-shadow: 0 15px 30px rgba(255,180,70,0.25); }
     .group-header { background: #ffb347; color: #1e2a32; padding: 12px; font-weight: bold; font-size: 1.3rem; text-align: center; }
     .teams-list { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px 10px; background: rgba(0,0,0,0.3); flex-wrap: wrap; }
-    .team-badge { background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 30px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(4px); transition: background 0.3s, transform 0.3s; }
-    .team-badge:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
+    .team-badge { background: rgba(255,255,255,0.12); padding: 6px 12px; border-radius: 30px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(4px); transition: background 0.3s, transform 0.3s; cursor: pointer; }
+    .team-badge:hover { background: rgba(255,180,70,0.3); transform: scale(1.08); }
     .team-badge img { width: 26px; height: 18px; object-fit: cover; border-radius: 3px; }
     .matches-list { padding: 15px; }
     .match-item { background: rgba(255,255,255,0.05); margin-bottom: 12px; padding: 12px; border-radius: 12px; transition: all 0.25s; border: 1px solid transparent; }
@@ -207,9 +207,6 @@
     color: #ffb347;
 }
 
-
-
-
 /* Ajuste móvil muy pequeño */
 @media (max-width: 550px) {
     .standings-table {
@@ -233,6 +230,100 @@
     .fixture-table td img { width: 24px; height: 16px; margin: 0 4px; vertical-align: middle; }
     .fixture-table .team-name { display: inline-flex; align-items: center; gap: 4px; }
     @media (max-width: 600px) { .fixture-table { font-size: 0.7rem; } .fixture-table td img { width: 18px; height: 12px; } }
+
+    /* ===== MODAL PARA PLANTILLA DE EQUIPOS ===== */
+    .squad-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(10px);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    .squad-modal-overlay.active {
+        display: flex;
+    }
+    .squad-modal {
+        background: #0a2f3a;
+        border-radius: 20px;
+        max-width: 700px;
+        width: 100%;
+        max-height: 85vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(255,180,70,0.5);
+        box-shadow: 0 0 40px rgba(255,180,70,0.2);
+    }
+    .squad-modal-header {
+        background: #ffb347;
+        color: #1e2a32;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .squad-modal-header button {
+        background: transparent;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #1e2a32;
+        padding: 0 8px;
+    }
+    .squad-modal-body {
+        padding: 15px 20px 20px;
+        overflow-y: auto;
+        flex: 1;
+    }
+    .squad-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+    }
+    .squad-table th {
+        background: rgba(0,0,0,0.5);
+        color: #ffb347;
+        font-weight: bold;
+        padding: 8px 6px;
+        text-align: center;
+        border-bottom: 2px solid rgba(255,180,70,0.5);
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .squad-table td {
+        padding: 6px 4px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    .squad-table td:first-child { width: 40px; }
+    .squad-table td:nth-child(2) { text-align: left; white-space: normal; word-break: break-word; }
+    .squad-table td:nth-child(4) { text-align: center; }
+    .squad-loading {
+        text-align: center;
+        padding: 30px;
+        color: #ccc;
+    }
+    .squad-empty {
+        text-align: center;
+        padding: 30px;
+        color: #ccc;
+    }
+    @media (max-width: 500px) {
+        .squad-modal { max-width: 95%; }
+        .squad-table { font-size: 0.7rem; }
+        .squad-table td, .squad-table th { padding: 4px 2px; }
+    }
 </style>
 </head>
 <body>
@@ -278,6 +369,19 @@
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
 </div>
 
+<!-- ===== MODAL PARA PLANTILLA DE EQUIPOS ===== -->
+<div id="squadModal" class="squad-modal-overlay">
+    <div class="squad-modal">
+        <div class="squad-modal-header">
+            <span id="squadModalTitle">Plantilla</span>
+            <button onclick="closeSquadModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="squad-modal-body" id="squadModalBody">
+            <div class="squad-loading">⏳ Cargando jugadores...</div>
+        </div>
+    </div>
+</div>
+
 <script>
 // ==================== CONFIGURACIÓN ====================
 const FOOTBALL_DATA_KEY = "8cff69db270e4e4e9ea61503994ef780";
@@ -290,7 +394,6 @@ const WORKER_URL = "https://cool-hat-282c.rolmen-z.workers.dev/?url=";
 const BASE_API_URL = "https://api.football-data.org/v4";
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 
-// Función para football-data.org a través del Worker
 function apiFetch(endpoint) {
     const fullUrl = `${BASE_API_URL}${endpoint}`;
     return fetch(`${WORKER_URL}${encodeURIComponent(fullUrl)}`, {
@@ -298,7 +401,6 @@ function apiFetch(endpoint) {
     });
 }
 
-// Función para API-Football a través del Worker
 function apiFootballFetch(endpoint) {
     const fullUrl = `${API_FOOTBALL_BASE}${endpoint}`;
     return fetch(`${WORKER_URL}${encodeURIComponent(fullUrl)}`, {
@@ -324,6 +426,7 @@ const TEAM_MAP_REVERSE = {
     "Portugal": "Portugal", "Congo DR": "RD Congo", "Uzbekistan": "Uzbekistán", "Colombia": "Colombia",
     "England": "Inglaterra", "Croatia": "Croacia", "Ghana": "Ghana", "Panama": "Panamá"
 };
+const TEAM_MAP = Object.fromEntries(Object.entries(TEAM_MAP_REVERSE).map(([k,v]) => [v, k]));
 
 // ============ FIXTURE OFICIAL FIFA 2026 (COMPLETO - 104 PARTIDOS) ============
 const OFFICIAL_MATCHES = [
@@ -425,11 +528,9 @@ if (savedMatches) {
 const savedKnockout = localStorage.getItem('worldcup2026_knockout');
 if (savedKnockout) knockoutMatches = JSON.parse(savedKnockout);
 
-// Asegurar que todos los partidos tengan la propiedad 'elapsed' (para mostrar minuto)
 currentMatches.forEach(match => {
     if (match.elapsed === undefined) match.elapsed = null;
 });
-// ==================================
 
 let teamIdMap = {};
 
@@ -475,7 +576,7 @@ async function renderNews() {
     } catch(e) { container.innerHTML = '<div class="empty-message">Error al cargar noticias.</div>'; }
 }
 
-// ==================== RENDERIZADO DE GRUPOS ====================
+// ==================== RENDERIZADO DE GRUPOS CON CLICK EN EQUIPOS ====================
 function renderGroups() {
     let container = document.getElementById('groupsContainer');
     if (!container) return;
@@ -484,11 +585,10 @@ function renderGroups() {
     for (let gl of groupOrder) {
         let matches = currentMatches.filter(m => m.group === gl);
         let teams = GROUP_TEAMS[gl];
-        html += `<div class="group-card"><div class="group-header">Grupo ${gl}</div><div class="teams-list">${teams.map(t => `<div class="team-badge"><img src="${getFlagUrl(t)}"><span>${getTeamCode(t)}</span></div>`).join('')}</div><div class="matches-list">`;
+        html += `<div class="group-card"><div class="group-header">Grupo ${gl}</div><div class="teams-list">${teams.map(t => `<div class="team-badge" data-team="${t}"><img src="${getFlagUrl(t)}"><span>${getTeamCode(t)}</span></div>`).join('')}</div><div class="matches-list">`;
         for (let m of matches) {
             let statusText = "📅 Programado", statusClass = "", scoreDisplay = "vs";
             if (m.status === "LIVE") {
-                // Mostrar el minuto si existe (desde API-Football)
                 statusText = m.elapsed ? `🟢 EN VIVO (${m.elapsed}')` : "🟢 EN VIVO";
                 statusClass = "live";
                 scoreDisplay = `${m.homeScore??0} - ${m.awayScore??0}`;
@@ -507,6 +607,14 @@ function renderGroups() {
         html += `</div></div>`;
     }
     container.innerHTML = html;
+    // Asignar eventos a los equipos (clicks)
+    document.querySelectorAll('.team-badge').forEach(badge => {
+        badge.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const teamName = this.getAttribute('data-team');
+            if (teamName) showTeamSquad(teamName);
+        });
+    });
 }
 
 // ==================== CÁLCULO DE ESTADÍSTICAS ====================
@@ -728,7 +836,7 @@ function renderStandings() {
         });
         html += `<div class="standings-card">
             <div class="standings-header">Grupo ${group}</div>
-            <div class="standings-table-wrapper">   <!-- AHORA SÍ: DIV envolvente -->
+            <div class="standings-table-wrapper">
                 <table class="standings-table">
                     <thead>
                         <tr>
@@ -755,7 +863,130 @@ function renderStandings() {
     html += `</div>`;
     if (!hasData) html = '<div class="empty-message">No hay datos de clasificación aún.</div>';
     container.innerHTML = html;
+    // Asignar eventos a los equipos de la clasificación
+    document.querySelectorAll('.standings-team').forEach(el => {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function() {
+            const text = this.textContent.trim();
+            const teamName = text.replace(/[^a-zA-ZáéíóúñÁÉÍÓÚÑ\s\-]/g, '').trim();
+            if (teamName && teamIdMap[teamName]) showTeamSquad(teamName);
+        });
+    });
 }
+
+// ==================== PLANTILLA DE EQUIPOS (SQUAD) ====================
+async function fetchTeamSquad(teamId) {
+    const cacheKey = `team_squad_${teamId}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            const data = JSON.parse(cached);
+            console.log(`📋 Plantilla de ${teamId} cargada desde caché`);
+            return data;
+        } catch(e) { console.warn("Error al parsear caché"); }
+    }
+    try {
+        const res = await apiFetch(`/teams/${teamId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const squad = data.squad || [];
+        if (squad.length) {
+            localStorage.setItem(cacheKey, JSON.stringify(squad));
+            console.log(`📋 Plantilla de ${teamId} guardada (${squad.length} jugadores)`);
+        }
+        return squad;
+    } catch(e) {
+        console.error("Error al obtener plantilla:", e);
+        return [];
+    }
+}
+
+function renderSquadModal(squad, teamName) {
+    const body = document.getElementById('squadModalBody');
+    const title = document.getElementById('squadModalTitle');
+    title.textContent = `👥 ${teamName} - Plantilla`;
+    if (!squad || !squad.length) {
+        body.innerHTML = '<div class="squad-empty">No hay información de jugadores disponible para este equipo.</div>';
+        return;
+    }
+    // Calcular edad
+    function calculateAge(birthDate) {
+        if (!birthDate) return '?';
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        return age;
+    }
+    let html = '<table class="squad-table"><thead><tr>';
+    html += '<th>#</th><th>Jugador</th><th>Posición</th><th>Edad</th><th>Nacionalidad</th>';
+    html += '</tr></thead><tbody>';
+    // Ordenar por número de camiseta (los que no tienen van al final)
+    const sorted = [...squad].sort((a,b) => {
+        const na = a.shirtNumber || 999;
+        const nb = b.shirtNumber || 999;
+        return na - nb;
+    });
+    for (let player of sorted) {
+        const age = calculateAge(player.dateOfBirth);
+        const flag = player.nationality ? getFlagUrlByCountry(player.nationality) : '';
+        html += `<tr>
+            <td>${player.shirtNumber || '-'}</td>
+            <td>${player.name}</td>
+            <td>${player.position || '-'}</td>
+            <td>${age}</td>
+            <td>${flag ? `<img src="${flag}" style="width:20px;height:14px;vertical-align:middle;">` : ''} ${player.nationality || '-'}</td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    body.innerHTML = html;
+}
+
+function getFlagUrlByCountry(country) {
+    const map = {
+        "Argentina": "ar", "Argelia": "dz", "Alemania": "de", "Arabia Saudita": "sa",
+        "Australia": "au", "Austria": "at", "Bélgica": "be", "Bosnia y Herzegovina": "ba",
+        "Brasil": "br", "Cabo Verde": "cv", "Canadá": "ca", "Catar": "qa",
+        "Colombia": "co", "Corea del Sur": "kr", "Costa de Marfil": "ci", "Croacia": "hr",
+        "Curazao": "cw", "Ecuador": "ec", "Egipto": "eg", "Escocia": "gb-sct",
+        "España": "es", "Estados Unidos": "us", "Francia": "fr", "Ghana": "gh",
+        "Haití": "ht", "Inglaterra": "gb-eng", "Irak": "iq", "Irán": "ir",
+        "Japón": "jp", "Jordania": "jo", "Marruecos": "ma", "México": "mx",
+        "Noruega": "no", "Nueva Zelanda": "nz", "Países Bajos": "nl", "Panamá": "pa",
+        "Paraguay": "py", "Portugal": "pt", "RD Congo": "cd", "República Checa": "cz",
+        "Senegal": "sn", "Sudáfrica": "za", "Suecia": "se", "Suiza": "ch",
+        "Túnez": "tn", "Turquía": "tr", "Uruguay": "uy", "Uzbekistán": "uz"
+    };
+    const code = map[country] || null;
+    return code ? `https://flagcdn.com/w320/${code}.png` : '';
+}
+
+async function showTeamSquad(teamName) {
+    const modal = document.getElementById('squadModal');
+    const body = document.getElementById('squadModalBody');
+    const title = document.getElementById('squadModalTitle');
+    title.textContent = `⏳ Cargando ${teamName}...`;
+    body.innerHTML = '<div class="squad-loading">⏳ Cargando jugadores...</div>';
+    modal.classList.add('active');
+    const teamId = teamIdMap[teamName];
+    if (!teamId) {
+        body.innerHTML = `<div class="squad-empty">⚠️ No se encontró ID para ${teamName}</div>`;
+        title.textContent = `❌ Error`;
+        return;
+    }
+    const squad = await fetchTeamSquad(teamId);
+    renderSquadModal(squad, teamName);
+}
+
+function closeSquadModal() {
+    document.getElementById('squadModal').classList.remove('active');
+}
+
+// Cerrar modal al hacer clic fuera del contenido
+document.getElementById('squadModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSquadModal();
+});
 
 // ==================== OBTENER IDs ====================
 async function fetchTeamIds() {
@@ -817,7 +1048,7 @@ async function fetchMatchDetails(matchId, localMatch) {
     } catch(e) { console.error(`❌ Error en detalle del partido ${matchId}:`, e); return false; }
 }
 
-// ==================== FUNCIONES HÍBRIDAS (API-Football primaria, football-data.org respaldo) ====================
+// ==================== FUNCIONES HÍBRIDAS ====================
 async function fetchLiveWithFallback() {
     const now = Date.now();
     if (now - lastApiFootballReset > 24 * 60 * 60 * 1000) {
@@ -830,9 +1061,7 @@ async function fetchLiveWithFallback() {
             if (res.ok) {
                 apiFootballDailyCalls++;
                 const data = await res.json();
-             console.log(`📦 [API-Football] Datos recibidos: ${data.response?.length || 0} partidos totales`);
                 if (data.response && data.response.length) {
-                    // Filtrar SOLO los partidos del Mundial (league.id === 1)
                     const worldCupMatches = data.response.filter(m => m.league.id === 1);
                     if (worldCupMatches.length) {
                         console.log("✅ API-Football: datos en vivo obtenidos (llamada #" + apiFootballDailyCalls + ")");
@@ -880,7 +1109,6 @@ async function updateLiveMatches() {
     const result = await fetchLiveWithFallback();
     if (!result.data || result.data.length === 0) return false;
     let anyUpdate = false;
-
     if (result.source === 'api-football') {
         for (let apiMatch of result.data) {
             const apiHomeName = apiMatch.teams.home.name;
@@ -890,7 +1118,7 @@ async function updateLiveMatches() {
             const localMatch = currentMatches.find(m => m.homeTeam === localHome && m.awayTeam === localAway);
             if (localMatch) {
                 const st = apiMatch.fixture.status.short;
-                const elapsed = apiMatch.fixture.status.elapsed; // 🆕 Minuto actual
+                const elapsed = apiMatch.fixture.status.elapsed;
                 let newStatus = localMatch.status;
                 if (st === "FT" || st === "AET" || st === "PEN") newStatus = "FINISHED";
                 else if (st === "HT") newStatus = "HT";
@@ -902,39 +1130,39 @@ async function updateLiveMatches() {
                     localMatch.status = newStatus;
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
-                    localMatch.elapsed = elapsed; // 🆕 Guardamos el minuto
+                    localMatch.elapsed = elapsed;
                     anyUpdate = true;
                     console.log(`🟢 [API-Football] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus}) minuto ${elapsed}`);
                 }
             } else {
-                console.warn(`⚠️ [API-Football] Partido no encontrado en fixture local: ${apiHomeName} vs ${apiAwayName}`);
+                console.warn(`⚠️ [API-Football] Partido no encontrado: ${apiHomeName} vs ${apiAwayName}`);
             }
         }
-} else {  // Esto es el bloque para football-data.org
-    for (let apiMatch of result.data) {
-        const localHome = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
-        const localAway = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
-        const localMatch = currentMatches.find(m => m.homeTeam === localHome && m.awayTeam === localAway);
-        if (localMatch) {
-            const status = apiMatch.status;
-            let newStatus = localMatch.status;
-            if (status === "FINISHED") newStatus = "FINISHED";
-            else if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED") newStatus = "LIVE";
-            else if (status === "HT") newStatus = "HT";
-            else newStatus = "SCHEDULED";
-            let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
-            let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
-            if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
-                localMatch.status = newStatus;
-                localMatch.homeScore = newHome;
-                localMatch.awayScore = newAway;
-                localMatch.elapsed = null;  // 🆕 LÍNEA AGREGADA: el minuto no está disponible en esta API
-                anyUpdate = true;
-                console.log(`🟢 [football-data.org] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus})`);
+    } else {
+        for (let apiMatch of result.data) {
+            const localHome = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
+            const localAway = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
+            const localMatch = currentMatches.find(m => m.homeTeam === localHome && m.awayTeam === localAway);
+            if (localMatch) {
+                const status = apiMatch.status;
+                let newStatus = localMatch.status;
+                if (status === "FINISHED") newStatus = "FINISHED";
+                else if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED") newStatus = "LIVE";
+                else if (status === "HT") newStatus = "HT";
+                else newStatus = "SCHEDULED";
+                let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
+                let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
+                if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
+                    localMatch.status = newStatus;
+                    localMatch.homeScore = newHome;
+                    localMatch.awayScore = newAway;
+                    localMatch.elapsed = null;
+                    anyUpdate = true;
+                    console.log(`🟢 [football-data.org] Actualizado: ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam} (${newStatus})`);
+                }
             }
         }
     }
-}
     return anyUpdate;
 }
 
@@ -952,7 +1180,7 @@ async function updateFinishedMatches(apiMatchesList) {
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
                     localMatch.status = "FINISHED";
-                    localMatch.elapsed = null; // Partido terminado, no mostramos minuto
+                    localMatch.elapsed = null;
                     anyUpdate = true;
                     console.log(`✅ [Resultado final] ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`);
                 }
@@ -961,6 +1189,7 @@ async function updateFinishedMatches(apiMatchesList) {
     }
     return anyUpdate;
 }
+
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
@@ -993,12 +1222,11 @@ async function fetchAllData() {
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        currentInterval = 60000;
+        currentInterval = 120000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista completa desde football-data.org: ${apiMatches.length} partidos.`);
         const finishedUpdated = await updateFinishedMatches(apiMatches);
-        // Actualizaciones secundarias
         const matchesByTeamIds = {};
         for (let apiMatch of apiMatches)
             matchesByTeamIds[`${apiMatch.homeTeam.id}_${apiMatch.awayTeam.id}`] = apiMatch;
@@ -1059,7 +1287,7 @@ async function fetchAllData() {
     renderStandings();
     await fetchScorers(); renderScorers();
     fetchAllData();
-  setInterval(fetchAllData, currentInterval);
+    setInterval(fetchAllData, currentInterval);
 })();
 
 // ==================== PESTAÑAS ====================
