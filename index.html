@@ -22,13 +22,13 @@
     <title>⚽ Mundial 2026 - App Híbrida (API-Football + football-data.org)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
-    /* ========== TUS ESTILOS ORIGINALES ========== */
+    /* ========== ESTILOS ========== */
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0a2f3a 0%, #0a1f2a 100%); color: #fff; padding: 20px; min-height: 100vh; scroll-behavior: smooth; }
     .container { max-width: 1400px; margin: 0 auto; }
     .header { text-align: center; margin-bottom: 30px; }
-    .header h1 { font-size: 2.4rem; background: linear-gradient(135deg, #ffd966, #ffb347); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,180,70,0.4); }
-    .header p { font-size: 1rem; opacity: 0.9; }
+    .header h1 { font-size: 2.4rem; background: linear-gradient(135deg, #ffd966, #ffb347); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,180,70,0.4); display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .header h1 svg { flex-shrink: 0; }
     .countdown { background: rgba(0,0,0,0.5); backdrop-filter: blur(15px); border-radius: 60px; display: inline-block; padding: 14px 28px; margin: 15px auto 0; text-align: center; border: 1px solid rgba(255,180,70,0.5); box-shadow: 0 0 20px rgba(255,180,70,0.4), inset 0 0 15px rgba(0,0,0,0.2); transition: transform 0.3s ease; }
     .countdown:hover { transform: translateY(-3px); box-shadow: 0 0 30px rgba(255,180,70,0.6); }
     .countdown-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: #ffb347; margin-bottom: 5px; }
@@ -117,112 +117,21 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: #ffb347; border-radius: 10px; }
-/* Contenedor principal SIN scroll global */
-#standingsContainer {
-    overflow-x: visible;
-    width: 100%;
-}
-
-/* Grid: una columna en móvil */
-.standings-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
-    margin-top: 10px;
-}
-
-/* Escritorio: varias columnas */
-@media (min-width: 768px) {
-    .standings-grid {
-        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    }
-}
-
-/* Tarjeta de grupo */
-.standings-card {
-    background: rgba(0,0,0,0.45);
-    backdrop-filter: blur(15px);
-    border-radius: 20px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.15);
-}
-
-/* Cabecera naranja */
-.standings-header {
-    background: #ffb347;
-    color: #1e2a32;
-    padding: 12px;
-    font-weight: bold;
-    font-size: 1.3rem;
-    text-align: center;
-}
-
-.standings-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-}
-.standings-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.75rem;
-    min-width: 520px;  /* Fuerza scroll en móvil */
-}
-
-/* Encabezados */
-.standings-table th {
-    background: rgba(0,0,0,0.5);
-    color: #ffb347;
-    font-weight: bold;
-    border-bottom: 2px solid rgba(255,180,70,0.5);
-    padding: 8px 6px;
-    text-align: center;
-}
-
-/* Celdas */
-.standings-table td {
-    padding: 6px 4px;
-    text-align: center;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-}
-
-/* Columna posición */
-.standings-table td:first-child,
-.standings-table th:first-child {
-    width: 40px;
-}
-
-/* Columna equipo */
-.standings-table td:nth-child(2),
-.standings-table th:nth-child(2) {
-    text-align: left;
-    white-space: normal;
-    word-break: break-word;
-    min-width: 100px;
-}
-
-/* Puntos en negrita */
-.standings-pts {
-    font-weight: bold;
-    color: #ffb347;
-}
-
-/* Ajuste móvil muy pequeño */
-@media (max-width: 550px) {
-    .standings-table {
-        font-size: 0.65rem;
-        min-width: 480px;
-    }
-    .standings-table th, .standings-table td {
-        padding: 4px 2px;
-    }
-    .standings-table td:nth-child(2),
-    .standings-table th:nth-child(2) {
-        min-width: 85px;
-    }
-}
-	
-    /* Tabla del fixture - asegura columnas separadas */
+    /* Standings styles */
+    #standingsContainer { overflow-x: visible; width: 100%; }
+    .standings-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 10px; }
+    @media (min-width: 768px) { .standings-grid { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); } }
+    .standings-card { background: rgba(0,0,0,0.45); backdrop-filter: blur(15px); border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); }
+    .standings-header { background: #ffb347; color: #1e2a32; padding: 12px; font-weight: bold; font-size: 1.3rem; text-align: center; }
+    .standings-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    .standings-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; min-width: 520px; }
+    .standings-table th { background: rgba(0,0,0,0.5); color: #ffb347; font-weight: bold; border-bottom: 2px solid rgba(255,180,70,0.5); padding: 8px 6px; text-align: center; }
+    .standings-table td { padding: 6px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); }
+    .standings-table td:first-child, .standings-table th:first-child { width: 40px; }
+    .standings-table td:nth-child(2), .standings-table th:nth-child(2) { text-align: left; white-space: normal; word-break: break-word; min-width: 100px; }
+    .standings-pts { font-weight: bold; color: #ffb347; }
+    @media (max-width: 550px) { .standings-table { font-size: 0.65rem; min-width: 480px; } .standings-table th, .standings-table td { padding: 4px 2px; } .standings-table td:nth-child(2), .standings-table th:nth-child(2) { min-width: 85px; } }
+    /* Fixture table */
     .fixture-table-wrapper { overflow-x: auto; width: 100%; }
     .fixture-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 800px; }
     .fixture-table th, .fixture-table td { padding: 10px 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); vertical-align: middle; white-space: nowrap; }
@@ -230,106 +139,32 @@
     .fixture-table td img { width: 24px; height: 16px; margin: 0 4px; vertical-align: middle; }
     .fixture-table .team-name { display: inline-flex; align-items: center; gap: 4px; }
     @media (max-width: 600px) { .fixture-table { font-size: 0.7rem; } .fixture-table td img { width: 18px; height: 12px; } }
-
-    /* ===== MODAL PARA PLANTILLA DE EQUIPOS ===== */
-    .squad-modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        backdrop-filter: blur(10px);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-    }
-    .squad-modal-overlay.active {
-        display: flex;
-    }
-    .squad-modal {
-        background: #0a2f3a;
-        border-radius: 20px;
-        max-width: 700px;
-        width: 100%;
-        max-height: 85vh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        border: 1px solid rgba(255,180,70,0.5);
-        box-shadow: 0 0 40px rgba(255,180,70,0.2);
-    }
-    .squad-modal-header {
-        background: #ffb347;
-        color: #1e2a32;
-        padding: 15px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: bold;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-    .squad-modal-header button {
-        background: transparent;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #1e2a32;
-        padding: 0 8px;
-    }
-    .squad-modal-body {
-        padding: 15px 20px 20px;
-        overflow-y: auto;
-        flex: 1;
-    }
-    .squad-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.8rem;
-    }
-    .squad-table th {
-        background: rgba(0,0,0,0.5);
-        color: #ffb347;
-        font-weight: bold;
-        padding: 8px 6px;
-        text-align: center;
-        border-bottom: 2px solid rgba(255,180,70,0.5);
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-    .squad-table td {
-        padding: 6px 4px;
-        text-align: center;
-        border-bottom: 1px solid rgba(255,255,255,0.15);
-    }
+    /* Squad modal */
+    .squad-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
+    .squad-modal-overlay.active { display: flex; }
+    .squad-modal { background: #0a2f3a; border-radius: 20px; max-width: 700px; width: 100%; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(255,180,70,0.5); box-shadow: 0 0 40px rgba(255,180,70,0.2); }
+    .squad-modal-header { background: #ffb347; color: #1e2a32; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 1.2rem; flex-shrink: 0; }
+    .squad-modal-header button { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #1e2a32; padding: 0 8px; }
+    .squad-modal-body { padding: 15px 20px 20px; overflow-y: auto; flex: 1; }
+    .squad-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .squad-table th { background: rgba(0,0,0,0.5); color: #ffb347; font-weight: bold; padding: 8px 6px; text-align: center; border-bottom: 2px solid rgba(255,180,70,0.5); position: sticky; top: 0; z-index: 2; }
+    .squad-table td { padding: 6px 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.15); }
     .squad-table td:first-child { width: 40px; }
     .squad-table td:nth-child(2) { text-align: left; white-space: normal; word-break: break-word; }
     .squad-table td:nth-child(4) { text-align: center; }
-    .squad-loading {
-        text-align: center;
-        padding: 30px;
-        color: #ccc;
-    }
-    .squad-empty {
-        text-align: center;
-        padding: 30px;
-        color: #ccc;
-    }
-    @media (max-width: 500px) {
-        .squad-modal { max-width: 95%; }
-        .squad-table { font-size: 0.7rem; }
-        .squad-table td, .squad-table th { padding: 4px 2px; }
-    }
+    .squad-loading { text-align: center; padding: 30px; color: #ccc; }
+    .squad-empty { text-align: center; padding: 30px; color: #ccc; }
+    @media (max-width: 500px) { .squad-modal { max-width: 95%; } .squad-table { font-size: 0.7rem; } .squad-table td, .squad-table th { padding: 4px 2px; } }
 </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>🏆 Mundial 2026</h1>
+      <h1>
+  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/2026_FIFA_World_Cup_emblem.svg/500px-2026_FIFA_World_Cup_emblem.svg.png" 
+       alt="Copa del Mundo" style="height:1.2em; vertical-align:middle;">
+  Mundial 2026
+</h1>
         <div id="countdownContainer" class="countdown">
             <div class="countdown-label">⚽ COMIENZA EN</div>
             <div class="countdown-timer">
@@ -401,65 +236,12 @@ function apiFetch(endpoint) {
     });
 }
 
-
-
-
-const API_FOOTBALL_TEAM_IDS = {
-  "México": 16, "Sudáfrica": 87, "Corea del Sur": 17, "República Checa": 38,
-  "Canadá": 31, "Bosnia y Herzegovina": 28, "Catar": 11, "Suiza": 15,
-  "Brasil": 6, "Marruecos": 29, "Haití": 86, "Escocia": 20,
-  "Estados Unidos": 7, "Paraguay": 22, "Australia": 19, "Turquía": 10,
-  "Alemania": 25, "Curazao": 83, "Costa de Marfil": 30, "Ecuador": 24,
-  "Países Bajos": 8, "Japón": 12, "Suecia": 14, "Túnez": 32,
-  "Bélgica": 1, "Egipto": 33, "Irán": 21, "Nueva Zelanda": 78,
-  "España": 9, "Cabo Verde": 41, "Arabia Saudita": 13, "Uruguay": 5,
-  "Francia": 2, "Senegal": 34, "Irak": 72, "Noruega": 35,
-  "Argentina": 26, "Argelia": 36, "Austria": 18, "Jordania": 77,
-  "Portugal": 3, "RD Congo": 43, "Uzbekistán": 42, "Colombia": 23,
-  "Inglaterra": 10, "Croacia": 4, "Ghana": 37, "Panamá": 39
-};
-
-
-
-
-
-
 function apiFootballFetch(endpoint) {
     const fullUrl = `${API_FOOTBALL_BASE}${endpoint}`;
     return fetch(`${WORKER_URL}${encodeURIComponent(fullUrl)}`, {
         headers: { 'x-apisports-key': API_FOOTBALL_KEY }
     });
 }
-
-
-
-
-
-async function fetchApiFootballSquad(teamName) {
-  const teamId = API_FOOTBALL_TEAM_IDS[teamName];
-  if (!teamId) return null;
-  try {
-    const res = await apiFootballFetch(`/players/squads?team=${teamId}`);
-    const data = await res.json();
-    if (data.response && data.response.length) {
-      // La respuesta tiene { team: {...}, players: [...] }
-      return data.response[0].players.map(p => ({
-        name: p.name,
-        position: p.position,
-        dateOfBirth: p.birth?.date || null,
-        nationality: p.nationality,
-        shirtNumber: p.number || null   // ← dorsal real
-      }));
-    }
-  } catch(e) {
-    console.error("Error API‑Football squad:", e);
-  }
-  return null;
-}
-
-
-
-
 
 let useApiFootballForLive = true;
 let apiFootballDailyCalls = 0;
@@ -482,7 +264,31 @@ const TEAM_MAP_REVERSE = {
 };
 const TEAM_MAP = Object.fromEntries(Object.entries(TEAM_MAP_REVERSE).map(([k,v]) => [v, k]));
 
-// ============ FIXTURE OFICIAL FIFA 2026 (COMPLETO - 104 PARTIDOS) ============
+
+const NATIONALITY_MAP_ES = {
+  "Argentina": "Argentina", "Algeria": "Argelia", "Austria": "Austria", "Australia": "Australia",
+  "Belgium": "Bélgica", "Bosnia and Herzegovina": "Bosnia y Herzegovina", "Brazil": "Brasil",
+  "Canada": "Canadá", "Cape Verde": "Cabo Verde", "China": "China", "Croatia": "Croacia",
+  "Colombia": "Colombia", "Costa Rica": "Costa Rica", "Czech Republic": "República Checa",
+  "Denmark": "Dinamarca", "Ecuador": "Ecuador", "Egypt": "Egipto", "England": "Inglaterra",
+  "France": "Francia", "Germany": "Alemania", "Ghana": "Ghana", "Haiti": "Haití",
+  "Iran": "Irán", "Iraq": "Irak", "Italy": "Italia", "Japan": "Japón", "Jordan": "Jordania",
+  "Korea Republic": "Corea del Sur", "Mexico": "México", "Morocco": "Marruecos",
+  "Netherlands": "Países Bajos", "New Zealand": "Nueva Zelanda", "Nigeria": "Nigeria",
+  "Norway": "Noruega", "Panama": "Panamá", "Paraguay": "Paraguay", "Poland": "Polonia",
+  "Portugal": "Portugal", "Qatar": "Catar", "Saudi Arabia": "Arabia Saudita",
+  "Scotland": "Escocia", "Senegal": "Senegal", "Serbia": "Serbia", "South Africa": "Sudáfrica",
+  "Spain": "España", "Sweden": "Suecia", "Switzerland": "Suiza", "Tunisia": "Túnez",
+  "Turkey": "Turquía", "Uruguay": "Uruguay", "USA": "Estados Unidos", "Venezuela": "Venezuela",
+  "Congo DR": "RD Congo", "Curacao": "Curazao", "Ivory Coast": "Costa de Marfil",
+  "Uzbekistan": "Uzbekistán", "Congo": "Congo", "Wales": "Gales", "Ireland": "Irlanda",
+  "Northern Ireland": "Irlanda del Norte", "Slovakia": "Eslovaquia", "Slovenia": "Eslovenia",
+  "Iceland": "Islandia", "Finland": "Finlandia", "Norway": "Noruega", "Hungary": "Hungría",
+  "Romania": "Rumanía", "Bulgaria": "Bulgaria", "Ukraine": "Ucrania", "Greece": "Grecia"
+};
+
+
+// ============ FIXTURE OFICIAL FIFA 2026 ============
 const OFFICIAL_MATCHES = [
     { id: "A1", group: "A", homeTeam: "México", awayTeam: "Sudáfrica", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-11T15:00:00-04:00", stadium: "Estadio Ciudad de México" },
     { id: "A2", group: "A", homeTeam: "Corea del Sur", awayTeam: "República Checa", homeScore: null, awayScore: null, status: "SCHEDULED", datetime: "2026-06-11T22:00:00-04:00", stadium: "Estadio Guadalajara" },
@@ -630,7 +436,7 @@ async function renderNews() {
     } catch(e) { container.innerHTML = '<div class="empty-message">Error al cargar noticias.</div>'; }
 }
 
-// ==================== RENDERIZADO DE GRUPOS CON CLICK EN EQUIPOS ====================
+// ==================== RENDERIZADO DE GRUPOS ====================
 function renderGroups() {
     let container = document.getElementById('groupsContainer');
     if (!container) return;
@@ -661,7 +467,6 @@ function renderGroups() {
         html += `</div></div>`;
     }
     container.innerHTML = html;
-    // Asignar eventos a los equipos (clicks)
     document.querySelectorAll('.team-badge').forEach(badge => {
         badge.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -870,7 +675,7 @@ function renderScorers() {
     container.innerHTML = html;
 }
 
-// ==================== TABLA DE CLASIFICACIÓN (LOCAL) ====================
+// ==================== TABLA DE CLASIFICACIÓN ====================
 function renderStandings() {
     const container = document.getElementById('standingsContainer');
     if (!container) return;
@@ -917,7 +722,6 @@ function renderStandings() {
     html += `</div>`;
     if (!hasData) html = '<div class="empty-message">No hay datos de clasificación aún.</div>';
     container.innerHTML = html;
-    // Asignar eventos a los equipos de la clasificación
     document.querySelectorAll('.standings-team').forEach(el => {
         el.style.cursor = 'pointer';
         el.addEventListener('click', function() {
@@ -928,7 +732,64 @@ function renderStandings() {
     });
 }
 
-// ==================== PLANTILLA DE EQUIPOS (SQUAD) ====================
+// ============ PLANTILLA HÍBRIDA MEJORADA ============
+const API_FOOTBALL_TEAM_IDS = {
+  "México": 16, "Sudáfrica": 87, "Corea del Sur": 17, "República Checa": 38,
+  "Canadá": 31, "Bosnia y Herzegovina": 28, "Catar": 11, "Suiza": 15,
+  "Brasil": 6, "Marruecos": 29, "Haití": 86, "Escocia": 20,
+  "Estados Unidos": 7, "Paraguay": 22, "Australia": 19, "Turquía": 10,
+  "Alemania": 25, "Curazao": 83, "Costa de Marfil": 30, "Ecuador": 24,
+  "Países Bajos": 8, "Japón": 12, "Suecia": 14, "Túnez": 32,
+  "Bélgica": 1, "Egipto": 33, "Irán": 21, "Nueva Zelanda": 78,
+  "España": 9, "Cabo Verde": 41, "Arabia Saudita": 13, "Uruguay": 5,
+  "Francia": 2, "Senegal": 34, "Irak": 72, "Noruega": 35,
+  "Argentina": 26, "Argelia": 36, "Austria": 18, "Jordania": 77,
+  "Portugal": 3, "RD Congo": 43, "Uzbekistán": 42, "Colombia": 23,
+  "Inglaterra": 10, "Croacia": 4, "Ghana": 37, "Panamá": 39
+};
+
+// Mapeo manual para nombres que difieren entre las APIs
+const MANUAL_NAME_MAP = {
+  "Pedro González López": "Pedri",
+  "Pedri": "Pedri",
+  "Pablo Gavi": "Gavi",
+  "Gavi": "Gavi",
+  "Géronimo Rulli": "Gerónimo Rulli",
+  "Juan Musso": "Juan Musso",
+  "Christian Romero": "Cristian Romero",
+  "Leonardo Balerdi": "Leonardo Balerdi",
+  "C. Acevedo": "Carlos Acevedo",
+  "Carlos Acevedo": "Carlos Acevedo",
+  "Giovanni Reyna": "Gio Reyna",
+};
+
+function normalizarNombre(nombre) {
+  return nombre
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-zñ\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extraerApellido(nombre) {
+  const partes = nombre.trim().split(/\s+/);
+  return partes.length > 1 ? normalizarNombre(partes[partes.length - 1]) : null;
+}
+
+async function fetchApiFootballSquad(teamName) {
+  const teamId = API_FOOTBALL_TEAM_IDS[teamName];
+  if (!teamId) return null;
+  try {
+    const res = await apiFootballFetch(`/players/squads?team=${teamId}`);
+    const data = await res.json();
+    if (data.response && data.response.length) {
+      return data.response[0].players; // array original de API‑Football
+    }
+  } catch(e) { console.error("Error API‑Football squad:", e); }
+  return null;
+}
+
 async function fetchTeamSquad(teamId, teamName) {
   const cacheKey = `team_squad_${teamId}`;
   const cached = localStorage.getItem(cacheKey);
@@ -936,7 +797,6 @@ async function fetchTeamSquad(teamId, teamName) {
     try { return JSON.parse(cached); } catch(e) {}
   }
 
-  // 1. Intentamos football-data.org (rápido, pero sin dorsales)
   let squad = [];
   try {
     const res = await apiFetch(`/teams/${teamId}`);
@@ -944,109 +804,137 @@ async function fetchTeamSquad(teamId, teamName) {
       const data = await res.json();
       squad = data.squad || [];
     }
-  } catch(e) {}
+  } catch(e) { console.warn("Error obteniendo plantilla football-data.org"); }
 
-  // 2. Si no hay dorsales (undefined o null), pedimos a API‑Football
-  const tieneDorsales = squad.length > 0 && squad.some(p => p.shirtNumber != null);
+  if (!squad.length) return [];
+
+  const tieneDorsales = squad.some(p => p.shirtNumber != null);
   if (!tieneDorsales && teamName) {
-    const apiSquad = await fetchApiFootballSquad(teamName);
-    if (apiSquad && apiSquad.length) {
-      squad = apiSquad;   // reemplazamos completamente
+    const apiPlayers = await fetchApiFootballSquad(teamName);
+    if (apiPlayers && apiPlayers.length) {
+      const mapaDorsales = new Map();
+      for (const p of apiPlayers) {
+        const nombre = p.name;
+        const keyNormal = normalizarNombre(nombre);
+        mapaDorsales.set(keyNormal, p.number);
+        const apellido = extraerApellido(nombre);
+        if (apellido && !mapaDorsales.has(apellido)) {
+          mapaDorsales.set(apellido, p.number);
+        }
+      }
+
+      for (const player of squad) {
+        if (player.shirtNumber == null) {
+          const nombreFD = player.name;
+          const keyFD = normalizarNombre(nombreFD);
+          let dorsal = null;
+
+          if (mapaDorsales.has(keyFD)) {
+            dorsal = mapaDorsales.get(keyFD);
+          }
+          if (!dorsal && MANUAL_NAME_MAP[keyFD]) {
+            const nameInApi = MANUAL_NAME_MAP[keyFD];
+            dorsal = mapaDorsales.get(normalizarNombre(nameInApi));
+          }
+          if (!dorsal) {
+            const ape = extraerApellido(nombreFD);
+            if (ape && mapaDorsales.has(ape)) {
+              dorsal = mapaDorsales.get(ape);
+            }
+          }
+
+          if (dorsal) player.shirtNumber = dorsal;
+        }
+      }
     }
   }
 
-  // Guardamos en caché (si tenemos algo)
-  if (squad.length) {
-    localStorage.setItem(cacheKey, JSON.stringify(squad));
-  }
+  if (squad.length) localStorage.setItem(cacheKey, JSON.stringify(squad));
   return squad;
 }
 
 function renderSquadModal(squad, teamName) {
-    const body = document.getElementById('squadModalBody');
-    const title = document.getElementById('squadModalTitle');
-    title.textContent = `👥 ${teamName} - Plantilla`;
-    if (!squad || !squad.length) {
-        body.innerHTML = '<div class="squad-empty">No hay información de jugadores disponible para este equipo.</div>';
-        return;
-    }
-    // Calcular edad
-    function calculateAge(birthDate) {
-        if (!birthDate) return '?';
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-        return age;
-    }
-    let html = '<table class="squad-table"><thead><tr>';
-    html += '<th>#</th><th>Jugador</th><th>Posición</th><th>Edad</th><th>Nacionalidad</th>';
-    html += '</tr></thead><tbody>';
-    // Ordenar por número de camiseta (los que no tienen van al final)
-    const sorted = [...squad].sort((a,b) => {
-        const na = a.shirtNumber || 999;
-        const nb = b.shirtNumber || 999;
-        return na - nb;
-    });
-    for (let player of sorted) {
-        const age = calculateAge(player.dateOfBirth);
-        const flag = player.nationality ? getFlagUrlByCountry(player.nationality) : '';
-        html += `<tr>
-            <td>${player.shirtNumber || '-'}</td>
-            <td>${player.name}</td>
-            <td>${player.position || '-'}</td>
-            <td>${age}</td>
-            <td>${flag ? `<img src="${flag}" style="width:20px;height:14px;vertical-align:middle;">` : ''} ${player.nationality || '-'}</td>
-        </tr>`;
-    }
-    html += '</tbody></table>';
-    body.innerHTML = html;
+  const body = document.getElementById('squadModalBody');
+  const title = document.getElementById('squadModalTitle');
+  title.textContent = `👥 ${teamName} - Plantilla`;
+  if (!squad || !squad.length) {
+    body.innerHTML = '<div class="squad-empty">No hay información de jugadores disponible para este equipo.</div>';
+    return;
+  }
+  function calculateAge(birthDate) {
+    if (!birthDate) return '?';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    if (isNaN(birth.getTime())) return '?';
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  }
+  let html = '<table class="squad-table"><thead><tr>';
+  html += '<th>#</th><th>Jugador</th><th>Posición</th><th>Edad</th><th>Nacionalidad</th>';
+  html += '</tr></thead><tbody>';
+  const sorted = [...squad].sort((a,b) => {
+    const na = a.shirtNumber || 999;
+    const nb = b.shirtNumber || 999;
+    return na - nb;
+  });
+  for (let player of sorted) {
+    const age = calculateAge(player.dateOfBirth);
+    const flag = player.nationality ? getFlagUrlByCountry(player.nationality) : '';
+    html += `<tr>
+        <td>${player.shirtNumber || '-'}</td>
+        <td>${player.name}</td>
+        <td>${player.position || '-'}</td>
+        <td>${age}</td>
+        <td>${flag ? `<img src="${flag}" style="width:20px;height:14px;vertical-align:middle;">` : ''} ${player.nationality || '-'}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
 }
 
 function getFlagUrlByCountry(country) {
-    const map = {
-        "Argentina": "ar", "Argelia": "dz", "Alemania": "de", "Arabia Saudita": "sa",
-        "Australia": "au", "Austria": "at", "Bélgica": "be", "Bosnia y Herzegovina": "ba",
-        "Brasil": "br", "Cabo Verde": "cv", "Canadá": "ca", "Catar": "qa",
-        "Colombia": "co", "Corea del Sur": "kr", "Costa de Marfil": "ci", "Croacia": "hr",
-        "Curazao": "cw", "Ecuador": "ec", "Egipto": "eg", "Escocia": "gb-sct",
-        "España": "es", "Estados Unidos": "us", "Francia": "fr", "Ghana": "gh",
-        "Haití": "ht", "Inglaterra": "gb-eng", "Irak": "iq", "Irán": "ir",
-        "Japón": "jp", "Jordania": "jo", "Marruecos": "ma", "México": "mx",
-        "Noruega": "no", "Nueva Zelanda": "nz", "Países Bajos": "nl", "Panamá": "pa",
-        "Paraguay": "py", "Portugal": "pt", "RD Congo": "cd", "República Checa": "cz",
-        "Senegal": "sn", "Sudáfrica": "za", "Suecia": "se", "Suiza": "ch",
-        "Túnez": "tn", "Turquía": "tr", "Uruguay": "uy", "Uzbekistán": "uz"
-    };
-    const code = map[country] || null;
-    return code ? `https://flagcdn.com/w320/${code}.png` : '';
+  const map = {
+    "Argentina": "ar", "Argelia": "dz", "Alemania": "de", "Arabia Saudita": "sa",
+    "Australia": "au", "Austria": "at", "Bélgica": "be", "Bosnia y Herzegovina": "ba",
+    "Brasil": "br", "Cabo Verde": "cv", "Canadá": "ca", "Catar": "qa",
+    "Colombia": "co", "Corea del Sur": "kr", "Costa de Marfil": "ci", "Croacia": "hr",
+    "Curazao": "cw", "Ecuador": "ec", "Egipto": "eg", "Escocia": "gb-sct",
+    "España": "es", "Estados Unidos": "us", "Francia": "fr", "Ghana": "gh",
+    "Haití": "ht", "Inglaterra": "gb-eng", "Irak": "iq", "Irán": "ir",
+    "Japón": "jp", "Jordania": "jo", "Marruecos": "ma", "México": "mx",
+    "Noruega": "no", "Nueva Zelanda": "nz", "Países Bajos": "nl", "Panamá": "pa",
+    "Paraguay": "py", "Portugal": "pt", "RD Congo": "cd", "República Checa": "cz",
+    "Senegal": "sn", "Sudáfrica": "za", "Suecia": "se", "Suiza": "ch",
+    "Túnez": "tn", "Turquía": "tr", "Uruguay": "uy", "Uzbekistán": "uz"
+  };
+  const code = map[country] || null;
+  return code ? `https://flagcdn.com/w320/${code}.png` : '';
 }
 
 async function showTeamSquad(teamName) {
-    const modal = document.getElementById('squadModal');
-    const body = document.getElementById('squadModalBody');
-    const title = document.getElementById('squadModalTitle');
-    title.textContent = `⏳ Cargando ${teamName}...`;
-    body.innerHTML = '<div class="squad-loading">⏳ Cargando jugadores...</div>';
-    modal.classList.add('active');
-    const teamId = teamIdMap[teamName];
-    if (!teamId) {
-        body.innerHTML = `<div class="squad-empty">⚠️ No se encontró ID para ${teamName}</div>`;
-        title.textContent = `❌ Error`;
-        return;
-    }
-   const squad = await fetchTeamSquad(teamId, teamName);
-    renderSquadModal(squad, teamName);
+  const modal = document.getElementById('squadModal');
+  const body = document.getElementById('squadModalBody');
+  const title = document.getElementById('squadModalTitle');
+  title.textContent = `⏳ Cargando ${teamName}...`;
+  body.innerHTML = '<div class="squad-loading">⏳ Cargando jugadores...</div>';
+  modal.classList.add('active');
+  const teamId = teamIdMap[teamName];
+  if (!teamId) {
+    body.innerHTML = `<div class="squad-empty">⚠️ No se encontró ID para ${teamName}</div>`;
+    title.textContent = `❌ Error`;
+    return;
+  }
+  const squad = await fetchTeamSquad(teamId, teamName);
+  renderSquadModal(squad, teamName);
 }
 
 function closeSquadModal() {
-    document.getElementById('squadModal').classList.remove('active');
+  document.getElementById('squadModal').classList.remove('active');
 }
-
-// Cerrar modal al hacer clic fuera del contenido
 document.getElementById('squadModal').addEventListener('click', function(e) {
-    if (e.target === this) closeSquadModal();
+  if (e.target === this) closeSquadModal();
 });
 
 // ==================== OBTENER IDs ====================
