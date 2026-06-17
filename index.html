@@ -188,18 +188,36 @@
         <button class="tab-btn" data-tab="about">ℹ️ Acerca de</button>
     </div>
 
-    <div id="groupsPanel" class="panel active"><div class="groups-container" id="groupsContainer">⏳ Cargando fase de grupos...</div></div>
+
+<div id="groupsPanel" class="panel active">
+    <!-- FILTRO SOLO PARA GRUPOS -->
+    <div style="text-align:center; margin-bottom:15px;">
+      <label for="groupTeamFilter" style="margin-right:8px; color:#ffb347;">🔍 Filtrar por equipo:</label>
+      <select id="groupTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 12px; font-size:0.9rem;">
+        <option value="">Todos los equipos</option>
+      </select>
+    </div>
+    <div class="groups-container" id="groupsContainer">⏳ Cargando fase de grupos...</div>
+</div>
+	</div>
     <div id="knockoutPanel" class="panel" style="display: none;"><div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div></div>
     <div id="scorersPanel" class="panel" style="display: none;"><div class="data-container" id="scorersContainer">⏳ Cargando goleadores...</div></div>
     <div id="newsPanel" class="panel" style="display: none;"><div class="data-container" id="newsContainer">📰 Noticias...</div></div>
     <div id="resultsPanel" class="panel" style="display: none;"><div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div></div>
     <div id="fixturePanel" class="panel" style="display: none;">
         <div class="edit-controls"><button id="editResultsBtn" class="tab-btn">✏️ Editar resultados</button><button id="saveResultsBtn" class="tab-btn" style="display:none;">💾 Guardar cambios</button></div>
+		<!-- FILTRO POR EQUIPO -->
+<div style="text-align:center; margin-bottom:15px;">
+  <label for="fixtureTeamFilter" style="margin-right:8px; color:#ffb347;">🔍 Filtrar por equipo:</label>
+  <select id="fixtureTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+    <option value="">Todos los equipos</option>
+  </select>
+</div>
         <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
         <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
     </div>
     <div id="standingsPanel" class="panel" style="display: none;"><div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div></div>
-    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Mundial 2026</h2><p>Datos: API-Football (en vivo) + football-data.org (respaldo)</p><p>Actualización automática.</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
+    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Fiesta Mundial 2026</h2><p>Datos: API-Football (en vivo) + football-data.org (respaldo)</p><p>Versión 5.0</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
     <footer>Datos: API-Football + football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
 </div>
@@ -440,10 +458,20 @@ async function renderNews() {
 function renderGroups() {
     let container = document.getElementById('groupsContainer');
     if (!container) return;
+    
+    // Si hay filtro activo, filtramos los partidos
+    let matchesToRender = currentMatches;
+    if (currentGroupFilter) {
+        matchesToRender = currentMatches.filter(m => {
+            return m.homeTeam === currentGroupFilter || m.awayTeam === currentGroupFilter;
+        });
+    }
+    
     let html = '';
     let groupOrder = ["A","B","C","D","E","F","G","H","I","J","K","L"];
     for (let gl of groupOrder) {
-        let matches = currentMatches.filter(m => m.group === gl);
+        let matches = matchesToRender.filter(m => m.group === gl);
+        if (matches.length === 0) continue; // oculta el grupo si no tiene partidos del filtro
         let teams = GROUP_TEAMS[gl];
         html += `<div class="group-card"><div class="group-header">Grupo ${gl}</div><div class="teams-list">${teams.map(t => `<div class="team-badge" data-team="${t}"><img src="${getFlagUrl(t)}"><span>${getTeamCode(t)}</span></div>`).join('')}</div><div class="matches-list">`;
         for (let m of matches) {
@@ -467,6 +495,7 @@ function renderGroups() {
         html += `</div></div>`;
     }
     container.innerHTML = html;
+    // Reasignar eventos a los equipos
     document.querySelectorAll('.team-badge').forEach(badge => {
         badge.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -555,20 +584,62 @@ function renderResults() {
 // ==================== FIXTURE ====================
 function getAllMatches() { return [...currentMatches, ...knockoutMatches].sort((a,b)=>new Date(a.datetime)-new Date(b.datetime)); }
 let fixtureEditMode = false;
+let currentGroupFilter = "";
+let currentFixtureFilter = ""; 
+
+
 function renderFixture(editMode = false) {
     const container = document.getElementById('fixtureContainer');
     if (!container) return;
-    const allMatches = getAllMatches();
+
+    let allMatches = getAllMatches();
+
+    // --- Aplicar filtros ---
+    if (currentFixtureFilter === "__TODAY__") {
+        // Filtrar por fecha de hoy (zona horaria de Bolivia)
+        const today = new Date();
+        const todayBolivia = new Date(today.toLocaleString("en-US", { timeZone: TIMEZONE }));
+        const todayYear = todayBolivia.getFullYear();
+        const todayMonth = todayBolivia.getMonth();
+        const todayDay = todayBolivia.getDate();
+
+        allMatches = allMatches.filter(m => {
+            const matchDate = new Date(m.datetime);
+            return (
+                matchDate.getFullYear() === todayYear &&
+                matchDate.getMonth() === todayMonth &&
+                matchDate.getDate() === todayDay
+            );
+        });
+    } else if (currentFixtureFilter) {
+        // Filtrar por equipo
+        allMatches = allMatches.filter(m => {
+            const local = m.home || m.homeTeam;
+            const visitante = m.away || m.awayTeam;
+            return local === currentFixtureFilter || visitante === currentFixtureFilter;
+        });
+    }
+
+    // --- Construir la tabla ---
+    let html = '';
+
     if (!allMatches.length) {
-        container.innerHTML = '<div class="empty-message">No hay partidos.</div>';
+        let mensaje = "No hay partidos";
+        if (currentFixtureFilter === "__TODAY__") {
+            mensaje = "No hay partidos programados para hoy.";
+        } else if (currentFixtureFilter) {
+            mensaje = `No hay partidos para ${currentFixtureFilter}.`;
+        }
+        container.innerHTML = `<div class="empty-message">${mensaje}</div>`;
         return;
     }
-    let html = '<div class="fixture-table-wrapper">';
+
+    html += '<div class="fixture-table-wrapper">';
     html += '<table class="fixture-table">';
     html += '<thead><tr>';
     html += '<th>Fecha</th><th>Grupo</th><th>Local</th><th></th><th>Visitante</th><th>Estadio</th>';
     html += editMode ? '<th>G.Loc</th><th>G.Vis</th>' : '<th>Resultado</th>';
-    html += '<th>📅</th>';
+    html += '<th>Notificar</th>';
     html += '</tr></thead><tbody>';
 
     for (const m of allMatches) {
@@ -595,9 +666,91 @@ function renderFixture(editMode = false) {
         html += `<td><a href="${googleCalUrl}" target="_blank" style="color:#ffb347;">📅</a></td>`;
         html += `</tr>`;
     }
+
     html += '</tbody></table></div>';
     container.innerHTML = html;
 }
+
+
+
+
+function populateTeamFilter() {
+    const select = document.getElementById('fixtureTeamFilter');
+    if (!select) return;
+
+    // Obtener todos los nombres de equipos únicos
+    const allMatches = getAllMatches();
+    const teams = new Set();
+    allMatches.forEach(m => {
+        const local = m.home || m.homeTeam;
+        const visitante = m.away || m.awayTeam;
+        if (local) teams.add(local);
+        if (visitante) teams.add(visitante);
+    });
+
+    // Ordenar alfabéticamente
+    const sorted = Array.from(teams).sort((a, b) => a.localeCompare(b));
+
+    // Limpiar el select y armar el orden deseado
+    select.innerHTML = '';
+
+    // 1. Partidos de hoy (primera opción)
+    const optionHoy = document.createElement('option');
+    optionHoy.value = "__TODAY__";
+    optionHoy.textContent = "📅 Partidos de hoy";
+    optionHoy.style.color = "#ffb347";
+    select.appendChild(optionHoy);
+
+    // 2. Todos los equipos (segunda opción)
+    const optionTodos = document.createElement('option');
+    optionTodos.value = "";
+    optionTodos.textContent = "Todos los equipos";
+    select.appendChild(optionTodos);
+
+    // 3. Equipos ordenados
+    sorted.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team;
+        option.textContent = team;
+        select.appendChild(option);
+    });
+
+    // Seleccionar "Todos los equipos" por defecto (valor vacío)
+    select.value = "";
+
+    // Evento de cambio
+    select.addEventListener('change', function () {
+        currentFixtureFilter = this.value;
+        renderFixture(fixtureEditMode);
+    });
+}
+
+
+
+function populateGroupFilter() {
+    const select = document.getElementById('groupTeamFilter');
+    if (!select) return;
+    // Recolectar todos los equipos de la fase de grupos
+    const teams = new Set();
+    currentMatches.forEach(m => {
+        if (m.homeTeam) teams.add(m.homeTeam);
+        if (m.awayTeam) teams.add(m.awayTeam);
+    });
+    const sorted = Array.from(teams).sort((a,b) => a.localeCompare(b));
+    select.innerHTML = '<option value="">Todos los equipos</option>';
+    sorted.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team;
+        option.textContent = team;
+        select.appendChild(option);
+    });
+    // Evento de cambio
+    select.addEventListener('change', function() {
+        currentGroupFilter = this.value;
+        renderGroups();
+    });
+}
+
 
 // ==================== TABLA DE GOLEADORES ====================
 let scorersData = [];
@@ -1231,7 +1384,12 @@ async function fetchAllData() {
 // ==================== INICIALIZACIÓN ====================
 (async function init() {
     await fetchTeamIds();
-    renderGroups(); renderKnockout(); renderResults(); renderFixture(false);
+    renderGroups(); 
+	renderKnockout(); 
+	renderResults(); 
+	renderFixture(false); 
+	populateTeamFilter();
+	populateGroupFilter();
     renderScorers();
     renderStandings();
     await fetchScorers(); renderScorers();
