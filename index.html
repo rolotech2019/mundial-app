@@ -1150,14 +1150,51 @@ async function fetchMatchDetails(matchId, localMatch) {
     } catch(e) { console.error(`❌ Error en detalle del partido ${matchId}:`, e); return false; }
 }
 
+
+// Determina si ahora mismo podría haber partidos en vivo (hora Bolivia)
+function hayPartidosEnVivoAhora() {
+    const ahora = new Date();
+    const bolivia = new Date(ahora.toLocaleString("en-US", { timeZone: TIMEZONE }));
+    const hora = bolivia.getHours();
+    const minutos = bolivia.getMinutes();
+    const horaDecimal = hora + minutos / 60;
+    // Entre las 11:30 y las 23:59 (hora Bolivia) puede haber partidos
+    return horaDecimal >= 11.5 && horaDecimal < 24.0;
+}
+
+
+
+
 // ==================== FUNCIONES HÍBRIDAS ====================
 async function fetchLiveWithFallback() {
     const now = Date.now();
+    
+    // Reiniciar contador diario cada 24 horas
     if (now - lastApiFootballReset > 24 * 60 * 60 * 1000) {
         apiFootballDailyCalls = 0;
         lastApiFootballReset = now;
+        useApiFootballForLive = true;  // reactivar por si se había desactivado
+        console.log("🔄 Contador diario de API-Football reiniciado.");
     }
-    if (useApiFootballForLive && apiFootballDailyCalls < 100) {
+
+    // Si estamos fuera del horario de partidos, forzamos el respaldo
+    if (!hayPartidosEnVivoAhora()) {
+        if (useApiFootballForLive) {
+            console.log("⏰ Fuera del horario de partidos, usando football-data.org directamente.");
+            useApiFootballForLive = false;
+			document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org: respaldo)`;
+        }
+    } else {
+        // Reactivar API-Football si estamos en horario de partidos
+        if (!useApiFootballForLive && apiFootballDailyCalls < 100) {
+            console.log("⏰ En horario de partidos, reactivando API-Football.");
+            useApiFootballForLive = true;
+			document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (API-Football: primaria)`;
+        }
+    }
+
+    // Intentar con API-Football solo si está activa, hay peticiones disponibles y estamos en horario
+    if (useApiFootballForLive && apiFootballDailyCalls < 100 && hayPartidosEnVivoAhora()) {
         try {
             const res = await apiFootballFetch('/fixtures?live=all');
             if (res.ok) {
@@ -1166,7 +1203,7 @@ async function fetchLiveWithFallback() {
                 if (data.response && data.response.length) {
                     const worldCupMatches = data.response.filter(m => m.league.id === 1);
                     if (worldCupMatches.length) {
-                        console.log("✅ API-Football: datos en vivo obtenidos (llamada #" + apiFootballDailyCalls + ")");
+                        console.log(`✅ API-Football: datos en vivo obtenidos (llamada #${apiFootballDailyCalls}/100)`);
                         return { source: 'api-football', data: worldCupMatches };
                     } else {
                         console.log("⚠️ API-Football: sin partidos del Mundial en vivo.");
@@ -1177,8 +1214,9 @@ async function fetchLiveWithFallback() {
                     return { source: 'api-football', data: [] };
                 }
             } else if (res.status === 429) {
-                console.warn("⚠️ API-Football: límite de peticiones alcanzado. Cambiando a respaldo.");
+                console.warn("⚠️ API-Football: límite de peticiones alcanzado (429). Cambiando a respaldo.");
                 useApiFootballForLive = false;
+				document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org: respaldo)`;
             } else {
                 console.warn(`⚠️ API-Football: error HTTP ${res.status}. Usando respaldo.`);
                 useApiFootballForLive = false;
@@ -1187,14 +1225,23 @@ async function fetchLiveWithFallback() {
             console.error("❌ Error en API-Football:", e);
             useApiFootballForLive = false;
         }
+    } else if (useApiFootballForLive && apiFootballDailyCalls >= 100) {
+        console.warn("⚠️ Límite diario de API-Football agotado (100/100). Cambiando a respaldo.");
+        useApiFootballForLive = false;
+		        document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org: respaldo)`;
     }
-    console.log("🔄 Usando football-data.org como respaldo para partidos en vivo.");
+
+    // Respaldo con football-data.org
+    console.log("🔄 Usando football-data.org para partidos en vivo.");
     try {
         const res = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (res.ok) {
             const data = await res.json();
             const matches = data.matches || [];
-            const liveMatches = matches.filter(m => m.status === "LIVE" || m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HT");
+            const liveMatches = matches.filter(m => 
+                m.status === "LIVE" || m.status === "IN_PLAY" || 
+                m.status === "PAUSED" || m.status === "HT"
+            );
             console.log(`📋 football-data.org: ${liveMatches.length} partidos en vivo/HT.`);
             return { source: 'football-data', data: liveMatches };
         } else {
