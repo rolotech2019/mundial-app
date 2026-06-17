@@ -678,7 +678,6 @@ function populateTeamFilter() {
     const select = document.getElementById('fixtureTeamFilter');
     if (!select) return;
 
-    // Obtener todos los nombres de equipos únicos
     const allMatches = getAllMatches();
     const teams = new Set();
     allMatches.forEach(m => {
@@ -687,27 +686,21 @@ function populateTeamFilter() {
         if (local) teams.add(local);
         if (visitante) teams.add(visitante);
     });
-
-    // Ordenar alfabéticamente
     const sorted = Array.from(teams).sort((a, b) => a.localeCompare(b));
 
-    // Limpiar el select y armar el orden deseado
     select.innerHTML = '';
 
-    // 1. Partidos de hoy (primera opción)
     const optionHoy = document.createElement('option');
     optionHoy.value = "__TODAY__";
     optionHoy.textContent = "📅 Partidos de hoy";
     optionHoy.style.color = "#ffb347";
     select.appendChild(optionHoy);
 
-    // 2. Todos los equipos (segunda opción)
     const optionTodos = document.createElement('option');
     optionTodos.value = "";
     optionTodos.textContent = "Todos los equipos";
     select.appendChild(optionTodos);
 
-    // 3. Equipos ordenados
     sorted.forEach(team => {
         const option = document.createElement('option');
         option.value = team;
@@ -715,12 +708,20 @@ function populateTeamFilter() {
         select.appendChild(option);
     });
 
-    // Seleccionar "Todos los equipos" por defecto (valor vacío)
-    select.value = "";
+    // Restaurar filtro guardado
+    const saved = localStorage.getItem('worldcup_fixtureFilter');
+    if (saved && [...select.options].some(opt => opt.value === saved)) {
+        select.value = saved;
+        currentFixtureFilter = saved;
+    } else {
+        select.value = "";
+        currentFixtureFilter = "";
+    }
+    renderFixture(fixtureEditMode); // aplicar filtro restaurado
 
-    // Evento de cambio
     select.addEventListener('change', function () {
         currentFixtureFilter = this.value;
+        localStorage.setItem('worldcup_fixtureFilter', currentFixtureFilter);
         renderFixture(fixtureEditMode);
     });
 }
@@ -730,13 +731,14 @@ function populateTeamFilter() {
 function populateGroupFilter() {
     const select = document.getElementById('groupTeamFilter');
     if (!select) return;
-    // Recolectar todos los equipos de la fase de grupos
+
     const teams = new Set();
     currentMatches.forEach(m => {
         if (m.homeTeam) teams.add(m.homeTeam);
         if (m.awayTeam) teams.add(m.awayTeam);
     });
     const sorted = Array.from(teams).sort((a,b) => a.localeCompare(b));
+
     select.innerHTML = '<option value="">Todos los equipos</option>';
     sorted.forEach(team => {
         const option = document.createElement('option');
@@ -744,9 +746,24 @@ function populateGroupFilter() {
         option.textContent = team;
         select.appendChild(option);
     });
-    // Evento de cambio
+
+    // Restaurar filtro guardado (si existe)
+    const saved = localStorage.getItem('worldcup_groupFilter');
+    if (saved && [...select.options].some(opt => opt.value === saved)) {
+        select.value = saved;
+        currentGroupFilter = saved;
+    } else {
+        select.value = "";
+        currentGroupFilter = "";
+    }
+
+    // Aplicar el filtro inmediatamente después de restaurar
+    renderGroups();
+
+    // Evento de cambio (guardar preferencia)
     select.addEventListener('change', function() {
         currentGroupFilter = this.value;
+        localStorage.setItem('worldcup_groupFilter', currentGroupFilter);
         renderGroups();
     });
 }
@@ -1532,7 +1549,6 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
 
 
 
