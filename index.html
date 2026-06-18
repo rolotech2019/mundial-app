@@ -1206,8 +1206,8 @@ function hayPartidosEnVivoAhora() {
     const hora = bolivia.getHours();
     const minutos = bolivia.getMinutes();
     const horaDecimal = hora + minutos / 60;
-    // Entre las 11:30 y las 23:59 (hora Bolivia) puede haber partidos
-    return horaDecimal >= 11.5 && horaDecimal < 24.0;
+    // Entre las 11:00 y las 02:00 (hora Bolivia) puede haber partidos en vivo
+    return horaDecimal >= 11.0 || horaDecimal < 2.0;
 }
 
 
@@ -1580,6 +1580,10 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
+
+
+
+
 
 
 
