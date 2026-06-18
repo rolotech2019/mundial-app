@@ -459,9 +459,27 @@ function renderGroups() {
     let container = document.getElementById('groupsContainer');
     if (!container) return;
     
-    // Si hay filtro activo, filtramos los partidos
+    // Aplicar filtros (por fecha o por equipo)
     let matchesToRender = currentMatches;
-    if (currentGroupFilter) {
+
+    if (currentGroupFilter === "__TODAY__") {
+        // Filtrar por fecha de hoy (zona horaria de Bolivia)
+        const today = new Date();
+        const todayBolivia = new Date(today.toLocaleString("en-US", { timeZone: TIMEZONE }));
+        const todayYear = todayBolivia.getFullYear();
+        const todayMonth = todayBolivia.getMonth();
+        const todayDay = todayBolivia.getDate();
+
+        matchesToRender = currentMatches.filter(m => {
+            const matchDate = new Date(m.datetime);
+            return (
+                matchDate.getFullYear() === todayYear &&
+                matchDate.getMonth() === todayMonth &&
+                matchDate.getDate() === todayDay
+            );
+        });
+    } else if (currentGroupFilter) {
+        // Filtrar por equipo
         matchesToRender = currentMatches.filter(m => {
             return m.homeTeam === currentGroupFilter || m.awayTeam === currentGroupFilter;
         });
@@ -739,7 +757,22 @@ function populateGroupFilter() {
     });
     const sorted = Array.from(teams).sort((a,b) => a.localeCompare(b));
 
-    select.innerHTML = '<option value="">Todos los equipos</option>';
+    select.innerHTML = '';
+
+    // 1. Partidos de hoy
+    const optionHoy = document.createElement('option');
+    optionHoy.value = "__TODAY__";
+    optionHoy.textContent = "📅 Partidos de hoy";
+    optionHoy.style.color = "#ffb347";
+    select.appendChild(optionHoy);
+
+    // 2. Todos los equipos
+    const optionTodos = document.createElement('option');
+    optionTodos.value = "";
+    optionTodos.textContent = "Todos los equipos";
+    select.appendChild(optionTodos);
+
+    // 3. Equipos
     sorted.forEach(team => {
         const option = document.createElement('option');
         option.value = team;
@@ -756,9 +789,7 @@ function populateGroupFilter() {
         select.value = "";
         currentGroupFilter = "";
     }
-
-    // Aplicar el filtro inmediatamente después de restaurar
-    renderGroups();
+    renderGroups(); // aplicar filtro restaurado
 
     // Evento de cambio (guardar preferencia)
     select.addEventListener('change', function() {
@@ -1359,7 +1390,7 @@ async function updateFinishedMatches(apiMatchesList) {
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
-let currentInterval = 120000;
+let currentInterval = 90000;
 let isUpdating = false;
 
 async function fetchAllData() {
@@ -1379,16 +1410,16 @@ async function fetchAllData() {
         if (!listRes.ok) {
             if (listRes.status === 429) {
                 consecutive429++;
-                const wait = Math.min(120000, 30000 * consecutive429);
+                const wait = Math.min(90000, 30000 * consecutive429);
                 console.warn(`⚠️ Límite excedido (429). Esperando ${wait/1000} segundos.`);
                 currentInterval = wait;
-                setTimeout(() => { currentInterval = 120000; isUpdating = false; fetchAllData(); }, wait);
+                setTimeout(() => { currentInterval = 90000; isUpdating = false; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        currentInterval = 120000;
+        currentInterval = 90000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         console.log(`📋 Lista completa desde football-data.org: ${apiMatches.length} partidos.`);
@@ -1549,6 +1580,9 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
+
+
+
 
 
 
