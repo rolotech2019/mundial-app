@@ -1435,7 +1435,7 @@ async function fetchAllData() {
             if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
         }
         if (document.getElementById('standingsPanel').style.display !== 'none') renderStandings();
-        document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (API-Football: ${useApiFootballForLive ? 'primaria' : 'respaldo'})`;
+        document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (API: ${useApiFootballForLive ? 'primaria' : 'respaldo'})`;
         console.log("✅ Ciclo completado.");
     } catch(e) {
         console.error("❌ Error en ciclo:", e);
