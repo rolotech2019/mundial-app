@@ -1,23 +1,35 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-   <script>
+<script>
   (function() {
-    if (!sessionStorage.getItem('ts_redirected')) {
-      if (window.location.href.indexOf('_ts=') === -1) {
-        var timestamp = new Date().getTime();
-        var separator = window.location.href.indexOf('?') === -1 ? '?' : '&';
-        var newUrl = window.location.href + separator + '_ts=' + timestamp;
-        sessionStorage.setItem('ts_redirected', 'true');
-        window.location.replace(newUrl);
+   
+    var VERSION = '6.1';
+
+    // Guardar la versión en localStorage y dejarla disponible globalmente
+    window.APP_VERSION = VERSION;
+    localStorage.setItem('app_version', VERSION);
+
+    // Verificar si tenemos una versión anterior guardada (de una carga previa)
+    var stored = localStorage.getItem('app_version_previous');
+    if (stored !== VERSION) {
+      // Es una versión nueva: forzar recarga sin caché
+      localStorage.setItem('app_version_previous', VERSION);
+      if (window.caches && caches.keys) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
       }
+      window.location.replace(window.location.href.split('?')[0] + '?v=' + Date.now());
     }
   })();
-</script> 
+</script>
+
+
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>⚽ Mundial 2026 - App Híbrida (API-Football + football-data.org)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -504,7 +516,14 @@
         <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
     </div>
     <div id="standingsPanel" class="panel" style="display: none;"><div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div></div>
-    <div id="aboutPanel" class="panel" style="display: none;"><div class="data-container about-content"><h2>⚽ Fiesta Mundial 2026</h2><p>Datos: API-Football (en vivo) + football-data.org (respaldo)</p><p>Versión 6.0</p><p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p></div></div>
+   <div id="aboutPanel" class="panel" style="display: none;">
+  <div class="data-container about-content">
+    <h2>⚽ Fiesta Mundial 2026</h2>
+    <p>Datos: API-Football (en vivo) + football-data.org (respaldo)</p>
+    <p>Versión <span id="appVersionDisplay"></span></p>
+    <p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p>
+  </div>
+</div>
     <footer>Datos: API-Football + football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
 </div>
@@ -1695,6 +1714,21 @@ async function updateFinishedMatches(apiMatchesList) {
     return anyUpdate;
 }
 
+
+
+
+  (function() {
+    var display = document.getElementById('appVersionDisplay');
+    if (display && window.APP_VERSION) {
+      display.textContent = window.APP_VERSION;
+    }
+  })();
+
+
+
+
+
+
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
@@ -1844,6 +1878,12 @@ if (editBtn && saveBtn) {
     });
 }
 
+
+
+
+
+
+
 // ==================== CUENTA REGRESIVA, SCROLL ====================
 setInterval(() => {
     let diff = WORLD_CUP_START - new Date();
@@ -1867,7 +1907,6 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
 
 
 
