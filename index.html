@@ -40,7 +40,7 @@
     @media (max-width: 500px) { .countdown-unit { min-width: 55px; padding: 5px 8px; } .countdown-number { font-size: 1.3rem; } .countdown-timer { gap: 8px; } }
     .last-update { font-size: 0.8rem; background: rgba(0,0,0,0.5); display: inline-block; padding: 5px 12px; border-radius: 20px; margin-top: 10px; }
 	
-/* ========== BARRA DE PESTAÑAS ========== */
+/* ========== BARRA DE PESTAÑAS LIGERA ========== */
 .tabs {
     display: flex;
     flex-wrap: nowrap;
@@ -48,23 +48,21 @@
     gap: 10px;
     justify-content: center;
     align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    /* Cambiamos el fondo difuso por uno sólido semitransparente (mucho más rápido) */
+    background: rgba(10, 31, 42, 0.8);  /* tono parecido al fondo general */
+    /* Quitamos backdrop-filter para evitar el desenfoque pesado */
     border-radius: 60px;
     padding: 10px 20px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    /* Sombra más simple, sin exagerar */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     margin-bottom: 30px;
     position: sticky;
     top: 10px;
     z-index: 1000;
-    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: touch;   /* scroll nativo fluido */
     scrollbar-width: none;
-    scroll-behavior: smooth;
-}
-.tabs::-webkit-scrollbar {
-    display: none;
+    /* Mantenemos scroll-behavior smooth si querés, no afecta el tacto */
 }
 
 .tab-btn {
@@ -79,32 +77,29 @@
     font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;           /* transición un poco más rápida */
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    backdrop-filter: blur(5px);
+    /* Sin backdrop-filter, sin blur, más ligero */
 }
 
 .tab-btn:hover {
     background: rgba(255, 180, 70, 0.25);
     color: #fff;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 180, 70, 0.3);
-    border-color: rgba(255, 180, 70, 0.5);
+    box-shadow: 0 4px 12px rgba(255, 180, 70, 0.3);
 }
 
 .tab-btn.active {
     background: linear-gradient(135deg, #ffb347, #ff9d00);
     color: #1e2a32;
     font-weight: bold;
-    box-shadow: 0 8px 25px rgba(255, 180, 70, 0.6);
-    border-color: #ffb347;
+    box-shadow: 0 6px 18px rgba(255, 180, 70, 0.6);
     transform: scale(1.05);
 }
 
-/* En pantallas chicas se alinean a la izquierda para mejor scroll */
 @media (max-width: 768px) {
     .tabs {
         justify-content: flex-start;
@@ -115,7 +110,6 @@
         font-size: 0.8rem;
     }
 }
-	
 	
 	
 /* ========== BOTONES DE EDICIÓN DEL FIXTURE ========== */
@@ -1875,7 +1869,6 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
 
 
 
