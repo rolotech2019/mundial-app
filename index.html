@@ -836,40 +836,6 @@ async function renderNews() {
 
 
 
-// ==================== INDICADORES DE SCROLL EN PESTAÑAS ====================
-function updateTabScrollIndicators() {
-    const wrapper = document.querySelector('.tabs-wrapper');
-    const tabs = wrapper?.querySelector('.tabs');
-    if (!wrapper || !tabs) return;
-    
-    const hasOverflow = tabs.scrollWidth > tabs.clientWidth;
-    const leftIndicator = wrapper.querySelector('.scroll-left');
-    const rightIndicator = wrapper.querySelector('.scroll-right');
-    
-    if (!hasOverflow) {
-        leftIndicator.style.display = 'none';
-        rightIndicator.style.display = 'none';
-        return;
-    }
-    
-    const isAtStart = tabs.scrollLeft <= 5;
-    const isAtEnd = tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 5;
-    
-    leftIndicator.style.display = isAtStart ? 'none' : 'flex';
-    rightIndicator.style.display = isAtEnd ? 'none' : 'flex';
-}
-
-// Ejecutar al cargar, al hacer scroll y al cambiar tamaño de ventana
-document.addEventListener('DOMContentLoaded', updateTabScrollIndicators);
-window.addEventListener('resize', updateTabScrollIndicators);
-
-const tabsContainer = document.querySelector('.tabs');
-if (tabsContainer) {
-    tabsContainer.addEventListener('scroll', updateTabScrollIndicators);
-}
-
-// Llamamos también después de los ciclos de actualización (ya lo tienes en fetchAllData e init)
-
 
 // ==================== RENDERIZADO DE GRUPOS ====================
 function renderGroups() {
@@ -1719,7 +1685,7 @@ async function updateFinishedMatches(apiMatchesList) {
                 const newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
                 const newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
 
-                
+                // ⚡ Forzar FINISHED aunque el marcador ya sea correcto (evita el congelamiento en LIVE)
                 if (localMatch.status !== "FINISHED") {
                     localMatch.status = "FINISHED";
                     localMatch.elapsed = null;
@@ -1817,7 +1783,7 @@ async function fetchAllData() {
     } finally {
         isUpdating = false;
 		console.log("✅ Ciclo de actualización completo.");
-		updateTabScrollIndicators();
+		
     }
 }
 
@@ -1834,7 +1800,6 @@ async function fetchAllData() {
     renderStandings();
     await fetchScorers(); renderScorers();
     fetchAllData();
-	updateTabScrollIndicators();
     setInterval(fetchAllData, currentInterval);
 })();
 
