@@ -4,7 +4,7 @@
 <script>
   (function() {
    
-    var VERSION = '6.5';
+    var VERSION = '6.6';
 
     // Guardar la versión en localStorage y dejarla disponible globalmente
     window.APP_VERSION = VERSION;
@@ -66,9 +66,6 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     margin-bottom: 30px;
-    position: sticky;
-    top: 10px;
-    z-index: 1000;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
@@ -487,7 +484,6 @@
 
 
 <div id="groupsPanel" class="panel" style="display: none;">
-
     <!-- FILTRO SOLO PARA GRUPOS -->
     <div style="text-align:center; margin-bottom:15px;">
       <label for="groupTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
@@ -497,31 +493,49 @@
     </div>
     <div class="groups-container" id="groupsContainer">⏳ Cargando fase de grupos...</div>
 </div>
-	
-    <div id="knockoutPanel" class="panel" style="display: none;"><div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div></div>
-    <div id="scorersPanel" class="panel" style="display: none;"><div class="data-container" id="scorersContainer">⏳ Cargando goleadores...</div></div>
-    <div id="newsPanel" class="panel" style="display: none;"><div class="data-container" id="newsContainer">📰 Noticias...</div></div>
-    <div id="resultsPanel" class="panel" style="display: none;"><div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div></div>
-    <div id="fixturePanel" class="panel active" style="display: block;">
-        <div class="edit-controls"><button id="editResultsBtn" class="tab-btn">✏️ Editar resultados</button><button id="saveResultsBtn" class="tab-btn" style="display:none;">💾 Guardar cambios</button></div>
-		<!-- FILTRO POR EQUIPO -->
-<div style="text-align:center; margin-bottom:25px;">
-  <label for="fixtureTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
-  <select id="fixtureTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
-    <option value="">Todos los equipos</option>
-  </select>
+
+<div id="knockoutPanel" class="panel" style="display: none;">
+    <div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div>
 </div>
-        <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
-        <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
+
+<div id="scorersPanel" class="panel" style="display: none;">
+    <div class="data-container" id="scorersContainer">⏳ Cargando goleadores...</div>
+</div>
+
+<div id="newsPanel" class="panel" style="display: none;">
+    <div class="data-container" id="newsContainer">📰 Noticias...</div>
+</div>
+
+<div id="resultsPanel" class="panel" style="display: none;">
+    <div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div>
+</div>
+
+<div id="fixturePanel" class="panel active" style="display: block;">
+    <div class="edit-controls">
+        <button id="editResultsBtn" class="tab-btn">✏️ Editar resultados</button>
+        <button id="saveResultsBtn" class="tab-btn" style="display:none;">💾 Guardar cambios</button>
     </div>
-    <div id="standingsPanel" class="panel" style="display: none;"><div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div></div>
-   <div id="aboutPanel" class="panel" style="display: none;">
-  <div class="data-container about-content">
-    <h2>⚽ Fiesta Mundial 2026</h2>
-    <p>Datos: API-Football (en vivo) + football-data.org (respaldo)</p>
-    <p>Versión <span id="appVersionDisplay"></span></p>
-    <p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p>
-  </div>
+    <div style="text-align:center; margin-bottom:25px;">
+        <label for="fixtureTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
+        <select id="fixtureTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+            <option value="">Todos los equipos</option>
+        </select>
+    </div>
+    <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
+    <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
+</div>
+
+<div id="standingsPanel" class="panel" style="display: none;">
+    <div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div>
+</div>
+
+<div id="aboutPanel" class="panel" style="display: none;">
+    <div class="data-container about-content">
+        <h2>⚽ Fiesta Mundial 2026</h2>
+        <p>Datos: API-Football (en vivo) + football-data.org (respaldo)</p>
+        <p>Versión <span id="appVersionDisplay"></span></p>
+        <p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p>
+    </div>
 </div>
     <footer>Datos: API-Football + football-data.org</footer>
     <button id="scrollUpBtn" style="position:fixed; bottom:20px; right:20px; background:rgba(0,0,0,0.6); border:1px solid #ffb347; border-radius:50%; width:45px; height:45px; color:#ffb347; cursor:pointer; display:none; align-items:center; justify-content:center;"><i class="fas fa-chevron-up"></i></button>
@@ -1734,87 +1748,67 @@ async function updateFinishedMatches(apiMatchesList) {
 
 
 
-// ==================== NAVEGACIÓN POR SWIPE ENTRE PESTAÑAS ====================
+// ==================== NAVEGACIÓN POR SWIPE (ROBUSTA) ====================
 (function() {
     const tabOrder = ['fixture','groups','results','standings','scorers','knockout','news','about'];
-    let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
-    let swipeHandled = false;
+    let startX, startY, startTime;
 
-    function getActiveTab() {
-        const activeBtn = document.querySelector('.tab-btn.active');
-        return activeBtn ? activeBtn.dataset.tab : 'fixture';
+    function getActiveIndex() {
+        const active = document.querySelector('.tab-btn.active');
+        if (!active) return 0;
+        return tabOrder.indexOf(active.dataset.tab);
     }
 
-    function activateTab(tabId) {
-        // Simula un clic en el botón correspondiente
-        const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-        if (btn) {
-            btn.click(); // Esto ejecuta toda la lógica de cambio de pestaña que ya tenés
-            // Asegurar que el botón sea visible en la barra (scroll horizontal)
-            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
+    function switchTab(dir) {
+        const idx = getActiveIndex();
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= tabOrder.length) return;
+        const btn = document.querySelector(`.tab-btn[data-tab="${tabOrder[newIdx]}"]`);
+        if (btn) btn.click();
     }
 
-    function handleTouchStart(e) {
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-        touchStartTime = Date.now();
-        swipeHandled = false;
+    // Permitir swipe incluso si el dedo pasó por encima de una tabla que no puede seguir desplazándose
+    function canScrollHorizontal(el, dx) {
+        // dx < 0 = deslizar hacia la izquierda (queremos ver si la tabla puede moverse a la derecha)
+        // dx > 0 = deslizar hacia la derecha (ver si puede moverse a la izquierda)
+        if (!el || el.scrollWidth <= el.clientWidth) return false;
+        const atStart = el.scrollLeft <= 1;
+        const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+        if (dx < 0) return !atEnd;   // si va a la izquierda, puede si no está al final
+        else return !atStart;        // si va a la derecha, puede si no está al inicio
     }
 
-    function handleTouchEnd(e) {
-        if (swipeHandled) return;
-        const touch = e.changedTouches[0];
-        const dx = touch.clientX - touchStartX;
-        const dy = touch.clientY - touchStartY;
-        const dt = Date.now() - touchStartTime;
+    document.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startTime = Date.now();
+    }, { passive: true });
 
-        // Umbrales: >50px horizontal, >1.5 veces el movimiento vertical, y <300ms
-        if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 50 && dt < 300) {
-            // Verificar que no estamos sobre un elemento con scroll horizontal interno
-            const target = e.target;
-            let el = target;
-            let hasHorizontalScroll = false;
-            while (el && el !== document.body) {
-                const style = window.getComputedStyle(el);
-                if (style.overflowX === 'auto' || style.overflowX === 'scroll') {
-                    // Verificar si realmente puede scrollear horizontalmente
-                    if (el.scrollWidth > el.clientWidth) {
-                        hasHorizontalScroll = true;
-                        break;
-                    }
+    document.addEventListener('touchend', function(e) {
+        const dx = e.changedTouches[0].clientX - startX;
+        const dy = e.changedTouches[0].clientY - startY;
+        const dt = Date.now() - startTime;
+
+        // Umbral mínimo: 50px horizontal, más que vertical, y en menos de 300ms
+        if (Math.abs(dx) < 50 || dt > 300 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+
+        // Buscar si el toque se originó sobre un elemento con scroll horizontal
+        let target = e.target;
+        while (target && target !== document.body) {
+            const style = window.getComputedStyle(target);
+            if (style.overflowX === 'auto' || style.overflowX === 'scroll') {
+                if (canScrollHorizontal(target, dx)) {
+                    return; // la tabla se desplaza, no cambiamos pestaña
+                } else {
+                    break; // la tabla no puede seguir, permitimos swipe
                 }
-                el = el.parentElement;
             }
-            if (hasHorizontalScroll) return; // No cambiar de pestaña si el gesto es sobre una tabla con scroll
-
-            const currentTab = getActiveTab();
-            const currentIndex = tabOrder.indexOf(currentTab);
-            if (currentIndex === -1) return;
-
-            let newIndex;
-            if (dx > 0) {
-                // swipe hacia la derecha -> pestaña anterior
-                newIndex = currentIndex - 1;
-            } else {
-                // swipe hacia la izquierda -> pestaña siguiente
-                newIndex = currentIndex + 1;
-            }
-
-            if (newIndex >= 0 && newIndex < tabOrder.length) {
-                activateTab(tabOrder[newIndex]);
-                swipeHandled = true;
-            }
+            target = target.parentElement;
         }
-    }
 
-    // Escuchar en el contenedor principal (donde están los paneles)
-    const container = document.querySelector('.container');
-    if (container) {
-        container.addEventListener('touchstart', handleTouchStart, { passive: true });
-        container.addEventListener('touchend', handleTouchEnd, { passive: true });
-    }
+        // Ejecutar cambio de pestaña
+        switchTab(dx < 0 ? 1 : -1);
+    });
 })();
 
 
@@ -1996,6 +1990,3 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
-
-
