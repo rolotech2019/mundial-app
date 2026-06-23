@@ -4,23 +4,37 @@
 <script>
   (function() {
    
-    var VERSION = '6.6';
+    var VERSION = '6.7';
+    var stored = localStorage.getItem('app_version_previous');
+    var versionChanged = stored && stored !== VERSION;
+    var keysToReset = [
+      'worldcup2026_matches',
+      'worldcup2026_knockoutSlots',
+      'worldcup2026_matches_ts',
+      'worldcup2026_scorers',
+      'worldcup2026_scorers_ts'
+    ];
 
-    // Guardar la versión en localStorage y dejarla disponible globalmente
     window.APP_VERSION = VERSION;
     localStorage.setItem('app_version', VERSION);
 
-    // Verificar si tenemos una versión anterior guardada (de una carga previa)
-    var stored = localStorage.getItem('app_version_previous');
+    if (versionChanged) {
+      keysToReset.forEach(function(key) { localStorage.removeItem(key); });
+      Object.keys(localStorage).forEach(function(key) {
+        if (key.indexOf('team_squad_') === 0) localStorage.removeItem(key);
+      });
+    }
+
     if (stored !== VERSION) {
-      // Es una versión nueva: forzar recarga sin caché
       localStorage.setItem('app_version_previous', VERSION);
       if (window.caches && caches.keys) {
-        caches.keys().then(function(keys) {
-          keys.forEach(function(k) { caches.delete(k); });
-        });
+        caches.keys()
+          .then(function(keys) { keys.forEach(function(k) { caches.delete(k); }); })
+          .catch(function() {});
       }
-      window.location.replace(window.location.href.split('?')[0] + '?v=' + Date.now());
+      if (versionChanged) {
+        window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
+      }
     }
   })();
 </script>
@@ -508,6 +522,12 @@
 </div>
 
 <div id="resultsPanel" class="panel" style="display: none;">
+    <div style="text-align:center; margin-bottom:15px;">
+        <label for="resultTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
+        <select id="resultTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+            <option value="">Todos los equipos</option>
+        </select>
+    </div>
     <div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div>
 </div>
 
@@ -547,7 +567,7 @@
     <div class="squad-modal">
         <div class="squad-modal-header">
             <span id="squadModalTitle">Plantilla</span>
-            <button onclick="closeSquadModal()"><i class="fas fa-times"></i></button>
+            <button id="closeSquadModalBtn" type="button" aria-label="Cerrar plantilla"><i class="fas fa-times"></i></button>
         </div>
         <div class="squad-modal-body" id="squadModalBody">
             <div class="squad-loading">⏳ Cargando jugadores...</div>
@@ -762,25 +782,51 @@ const OFFICIAL_KNOCKOUT_SLOTS = [
 
 
 
+function cloneData(data) {
+    return JSON.parse(JSON.stringify(data));
+}
+
+function readJSONStorage(key, fallback = null) {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    try {
+        return JSON.parse(raw);
+    } catch(e) {
+        console.warn(`⚠️ Datos corruptos en ${key}, se reiniciará esa sección.`);
+        localStorage.removeItem(key);
+        return fallback;
+    }
+}
+
+function saveJSONStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch(e) {
+        console.warn(`⚠️ No se pudo guardar ${key}:`, e);
+        return false;
+    }
+}
+
 // ============ PERSISTENCIA ============
 let currentMatches;
 let knockoutSlots;
-const savedMatches = localStorage.getItem('worldcup2026_matches');
-if (savedMatches) {
-    currentMatches = JSON.parse(savedMatches);
+const savedMatches = readJSONStorage('worldcup2026_matches');
+if (Array.isArray(savedMatches)) {
+    currentMatches = savedMatches;
     console.log("📀 Datos de partidos cargados desde localStorage");
 } else {
-    currentMatches = JSON.parse(JSON.stringify(OFFICIAL_MATCHES));
-    localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
+    currentMatches = cloneData(OFFICIAL_MATCHES);
+    saveJSONStorage('worldcup2026_matches', currentMatches);
     console.log("📀 Primera carga: fixture inicial guardado");
 }
-const savedSlots = localStorage.getItem('worldcup2026_knockoutSlots');
-if (savedSlots) {
-    knockoutSlots = JSON.parse(savedSlots);
+const savedSlots = readJSONStorage('worldcup2026_knockoutSlots');
+if (Array.isArray(savedSlots)) {
+    knockoutSlots = savedSlots;
     console.log("🏆 Slots de eliminatorias cargados de localStorage");
 } else {
-    knockoutSlots = JSON.parse(JSON.stringify(OFFICIAL_KNOCKOUT_SLOTS));
-    localStorage.setItem('worldcup2026_knockoutSlots', JSON.stringify(knockoutSlots));
+    knockoutSlots = cloneData(OFFICIAL_KNOCKOUT_SLOTS);
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 }
 
 currentMatches.forEach(match => {
@@ -792,6 +838,31 @@ let teamIdMap = {};
 
 
 // ==================== FUNCIONES AUXILIARES ====================
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function(char) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char];
+    });
+}
+
+function escapeAttr(value) {
+    return escapeHTML(value).replace(/`/g, '&#96;');
+}
+
+function safeExternalUrl(value) {
+    try {
+        const url = new URL(String(value || ''), window.location.href);
+        return url.protocol === 'https:' ? url.href : '#';
+    } catch(e) {
+        return '#';
+    }
+}
+
 function getFlagUrl(teamName) {
     const codes = { "México":"mx","Sudáfrica":"za","Corea del Sur":"kr","República Checa":"cz","Canadá":"ca","Bosnia y Herzegovina":"ba","Catar":"qa","Suiza":"ch","Brasil":"br","Marruecos":"ma","Haití":"ht","Escocia":"gb-sct","Estados Unidos":"us","Paraguay":"py","Australia":"au","Turquía":"tr","Alemania":"de","Curazao":"cw","Costa de Marfil":"ci","Ecuador":"ec","Países Bajos":"nl","Japón":"jp","Suecia":"se","Túnez":"tn","Bélgica":"be","Egipto":"eg","Irán":"ir","Nueva Zelanda":"nz","España":"es","Cabo Verde":"cv","Arabia Saudita":"sa","Uruguay":"uy","Francia":"fr","Senegal":"sn","Irak":"iq","Noruega":"no","Argentina":"ar","Argelia":"dz","Austria":"at","Jordania":"jo","Portugal":"pt","RD Congo":"cd","Uzbekistán":"uz","Colombia":"co","Inglaterra":"gb-eng","Croacia":"hr","Ghana":"gh","Panamá":"pa" };
     if (teamName === "Escocia") return "https://flagcdn.com/w320/gb-sct.png";
@@ -825,7 +896,11 @@ async function renderNews() {
         if (data.items && data.items.length) {
             let html = '<div style="padding:10px;">';
             for (let item of data.items.slice(0, 15)) {
-                html += `<a href="${item.link}" target="_blank" style="text-decoration:none; color:inherit;"><div class="news-item">${item.thumbnail ? `<img src="${item.thumbnail}" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">` : ''}<div><div style="font-weight:bold; color:#ffb347;">${item.title}</div><div style="font-size:0.7rem;">${new Date(item.pubDate).toLocaleDateString('es-BO')}</div></div></div></a>`;
+                const link = safeExternalUrl(item.link);
+                const thumbnail = safeExternalUrl(item.thumbnail);
+                const imageHTML = thumbnail !== '#' ? `<img src="${escapeAttr(thumbnail)}" alt="" loading="lazy" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">` : '';
+                const pubDate = item.pubDate ? new Date(item.pubDate).toLocaleDateString('es-BO') : '';
+                html += `<a href="${escapeAttr(link)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; color:inherit;"><div class="news-item">${imageHTML}<div><div style="font-weight:bold; color:#ffb347;">${escapeHTML(item.title)}</div><div style="font-size:0.7rem;">${escapeHTML(pubDate)}</div></div></div></a>`;
             }
             html += '</div>';
             container.innerHTML = html;
@@ -867,7 +942,7 @@ function renderGroups() {
         let matches = matchesToRender.filter(m => m.group === gl);
         if (matches.length === 0) continue;
         let teams = GROUP_TEAMS[gl];
-        html += `<div class="group-card"><div class="group-header">Grupo ${gl}</div><div class="teams-list">${teams.map(t => `<div class="team-badge" data-team="${t}"><img src="${getFlagUrl(t)}"><span>${getTeamCode(t)}</span></div>`).join('')}</div><div class="matches-list">`;
+        html += `<div class="group-card"><div class="group-header">Grupo ${escapeHTML(gl)}</div><div class="teams-list">${teams.map(t => `<div class="team-badge" data-team="${escapeAttr(t)}"><img src="${escapeAttr(getFlagUrl(t))}" alt="" loading="lazy"><span>${escapeHTML(getTeamCode(t))}</span></div>`).join('')}</div><div class="matches-list">`;
         for (let m of matches) {
             let statusText = "📅 Programado", statusClass = "", scoreDisplay = "vs";
             if (m.status === "LIVE") {
@@ -884,7 +959,7 @@ function renderGroups() {
                 statusText = "✅ Finalizado";
                 scoreDisplay = `${m.homeScore} - ${m.awayScore}`;
             }
-            html += `<div class="match-item"><div class="match-teams"><div class="team"><img src="${getFlagUrl(m.homeTeam)}"><span class="team-name">${m.homeTeam}</span></div><div class="score">${scoreDisplay}</div><div class="team"><span class="team-name">${m.awayTeam}</span><img src="${getFlagUrl(m.awayTeam)}"></div></div><div class="match-info"><span>🏟️ ${m.stadium}</span><span>⏰ ${formatDateTime(m.datetime)}</span><span class="status-badge ${statusClass}">${statusText}</span></div></div>`;
+            html += `<div class="match-item"><div class="match-teams"><div class="team"><img src="${escapeAttr(getFlagUrl(m.homeTeam))}" alt="" loading="lazy"><span class="team-name">${escapeHTML(m.homeTeam)}</span></div><div class="score">${escapeHTML(scoreDisplay)}</div><div class="team"><span class="team-name">${escapeHTML(m.awayTeam)}</span><img src="${escapeAttr(getFlagUrl(m.awayTeam))}" alt="" loading="lazy"></div></div><div class="match-info"><span>🏟️ ${escapeHTML(m.stadium)}</span><span>⏰ ${escapeHTML(formatDateTime(m.datetime))}</span><span class="status-badge ${escapeAttr(statusClass)}">${escapeHTML(statusText)}</span></div></div>`;
         }
         html += `</div></div>`;
     }
@@ -1009,7 +1084,7 @@ function fillKnockoutSlotsFromGroups() {
             if (visitor) slot.visitor = visitor;
         }
     }
-    localStorage.setItem('worldcup2026_knockoutSlots', JSON.stringify(knockoutSlots));
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 }
 
 function updateSlotsFromApi(apiKnockoutMatches) {
@@ -1041,7 +1116,7 @@ function updateSlotsFromApi(apiKnockoutMatches) {
             if (apiMatch.venue) slot.stadium = apiMatch.venue;
         }
     }
-    localStorage.setItem('worldcup2026_knockoutSlots', JSON.stringify(knockoutSlots));
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 }
 
 function renderKnockout() {
@@ -1062,21 +1137,25 @@ function renderKnockout() {
             const visitor = slot.visitor || '?';
             const localFlag = slot.local ? getFlagUrl(slot.local) : '';
             const visitorFlag = slot.visitor ? getFlagUrl(slot.visitor) : '';
+            const safeLocal = escapeHTML(local);
+            const safeVisitor = escapeHTML(visitor);
+            const safeLocalAttr = escapeAttr(local);
+            const safeVisitorAttr = escapeAttr(visitor);
 
             let scoreHTML = '';
             if (slot.status === 'FINISHED' && slot.homeScore !== null) {
                 scoreHTML = `
                     <div class="score-box">
-                        <span class="score-number">${slot.homeScore}</span>
+                        <span class="score-number">${escapeHTML(slot.homeScore)}</span>
                         <span>-</span>
-                        <span class="score-number">${slot.awayScore}</span>
+                        <span class="score-number">${escapeHTML(slot.awayScore)}</span>
                     </div>`;
             } else if (slot.status === 'LIVE') {
                 scoreHTML = `
                     <div class="score-box">
-                        <span class="score-number" style="background:#e67e22;">${slot.homeScore??0}</span>
+                        <span class="score-number" style="background:#e67e22;">${escapeHTML(slot.homeScore??0)}</span>
                         <span>-</span>
-                        <span class="score-number" style="background:#e67e22;">${slot.awayScore??0}</span>
+                        <span class="score-number" style="background:#e67e22;">${escapeHTML(slot.awayScore??0)}</span>
                     </div>`;
             } else {
                 scoreHTML = `<div class="score-box"><span style="font-size:1rem; color:#ffb347;">vs</span></div>`;
@@ -1096,21 +1175,21 @@ function renderKnockout() {
             html += `
             <div class="match-card ${cardClass}">
                 <div class="match-header">
-                    <div class="match-date">📅 ${formatDateTime(slot.date)}</div>
+                    <div class="match-date">📅 ${escapeHTML(formatDateTime(slot.date))}</div>
                     ${statusBadge}
                 </div>
                 <div class="match-teams">
                     <div class="team-row">
-                        ${localFlag ? `<img src="${localFlag}" alt="${local}">` : ''}
-                        <span>${local}</span>
+                        ${localFlag ? `<img src="${escapeAttr(localFlag)}" alt="${safeLocalAttr}" loading="lazy">` : ''}
+                        <span>${safeLocal}</span>
                     </div>
                     <div class="team-row">
-                        ${visitorFlag ? `<img src="${visitorFlag}" alt="${visitor}">` : ''}
-                        <span>${visitor}</span>
+                        ${visitorFlag ? `<img src="${escapeAttr(visitorFlag)}" alt="${safeVisitorAttr}" loading="lazy">` : ''}
+                        <span>${safeVisitor}</span>
                     </div>
                 </div>
                 ${scoreHTML}
-                ${stadiumText ? `<div class="match-footer">🏟️ ${stadiumText}</div>` : ''}
+                ${stadiumText ? `<div class="match-footer">🏟️ ${escapeHTML(stadiumText)}</div>` : ''}
             </div>`;
         }
         html += '</div>';
@@ -1122,13 +1201,14 @@ function renderKnockout() {
     if (finalSlot && finalSlot.status === 'FINISHED' && finalSlot.homeScore !== null) {
         const champion = finalSlot.homeScore > finalSlot.awayScore ? finalSlot.local : finalSlot.visitor;
         const championFlag = getFlagUrl(champion);
+        const safeChampion = escapeHTML(champion);
         html += `
         <div class="champion-section">
             <div class="champion-card">
                 <h2>🏆 ¡CAMPEÓN DEL MUNDIAL 2026! 🏆</h2>
                 <div class="champion-details">
-                    ${championFlag ? `<img src="${championFlag}" alt="${champion}">` : ''}
-                    <span class="champion-name">${champion}</span>
+                    ${championFlag ? `<img src="${escapeAttr(championFlag)}" alt="${escapeAttr(champion)}" loading="lazy">` : ''}
+                    <span class="champion-name">${safeChampion}</span>
                 </div>
                 <div class="champion-stats">
                     🥇 Mejor equipo del torneo
@@ -1147,14 +1227,36 @@ function renderKnockout() {
 function renderResults() {
     let finished = currentMatches.filter(m => m.status === "FINISHED" && m.homeScore !== null);
     finished = finished.concat(knockoutSlots.filter(m => m.status === "FINISHED" && m.homeScore !== null && m.local && m.visitor));
+
+    // Aplicar filtro según currentResultFilter
+    if (currentResultFilter === "__TODAY__") {
+        const today = new Date();
+        const todayBolivia = new Date(today.toLocaleString("en-US", { timeZone: TIMEZONE }));
+        const todayYear = todayBolivia.getFullYear();
+        const todayMonth = todayBolivia.getMonth();
+        const todayDay = todayBolivia.getDate();
+        finished = finished.filter(m => {
+            const matchDate = new Date(m.datetime || m.date);
+            return matchDate.getFullYear() === todayYear &&
+                   matchDate.getMonth() === todayMonth &&
+                   matchDate.getDate() === todayDay;
+        });
+    } else if (currentResultFilter) {
+        finished = finished.filter(m => {
+            const local = m.homeTeam || m.local;
+            const visitor = m.awayTeam || m.visitor;
+            return local === currentResultFilter || visitor === currentResultFilter;
+        });
+    }
+
     let container = document.getElementById('resultsContainer');
-    if(!finished.length) { container.innerHTML = '<div class="empty-message">Aún no hay partidos finalizados</div>'; return; }
+    if(!finished.length) { container.innerHTML = '<div class="empty-message">No se encontraron partidos finalizados con el filtro actual.</div>'; return; }
     let html = '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Local</th><th>vs</th><th>Visitante</th><th>Fecha</th></tr></thead><tbody>';
     for(let m of finished) {
         const local = m.homeTeam || m.local;
         const visitor = m.awayTeam || m.visitor;
         const score = `${m.homeScore} - ${m.awayScore}`;
-        html += `<tr><td class="player-cell"><img src="${getFlagUrl(local)}"> ${local}</td><td style="white-space:nowrap;">${score}</td><td class="player-cell">${visitor} <img src="${getFlagUrl(visitor)}"></td><td style="white-space:nowrap; font-size:0.7rem;">${formatDateTime(m.datetime || m.date)}</td</tr>`;
+        html += `<tr><td class="player-cell"><img src="${escapeAttr(getFlagUrl(local))}" alt="" loading="lazy"> ${escapeHTML(local)}</td><td style="white-space:nowrap;">${escapeHTML(score)}</td><td class="player-cell">${escapeHTML(visitor)} <img src="${escapeAttr(getFlagUrl(visitor))}" alt="" loading="lazy"></td><td style="white-space:nowrap; font-size:0.7rem;">${escapeHTML(formatDateTime(m.datetime || m.date))}</td></tr>`;
     }
     html += '</tbody></table></div>';
     container.innerHTML = html;
@@ -1175,6 +1277,7 @@ function getAllMatches() {
 let fixtureEditMode = false;
 let currentGroupFilter = "";
 let currentFixtureFilter = "";
+let currentResultFilter = "";
 
 function renderFixture(editMode = false) {
     const container = document.getElementById('fixtureContainer');
@@ -1215,20 +1318,20 @@ function renderFixture(editMode = false) {
         const visitor = m.away || m.awayTeam;
         let resultado = (m.status === "FINISHED" && m.homeScore !== null) ? `${m.homeScore} - ${m.awayScore}` : (m.status === "LIVE" ? "En vivo" : "Programado");
         const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(local + ' vs ' + visitor)}&dates=${formatGoogleCalendarDate(m.datetime)}/${formatGoogleCalendarDate(m.datetime)}&details=Partido+del+Mundial+2026&location=${encodeURIComponent(m.stadium || 'Estadio')}`;
-        html += `<tr data-id="${m.id}">`;
-        html += `<td>${formatDateTime(m.datetime)}</td>`;
-        html += `<td>${fase}</td>`;
-        html += `<td class="team-name"><img src="${getFlagUrl(local)}"> ${local}</td>`;
+        html += `<tr data-id="${escapeAttr(m.id)}">`;
+        html += `<td>${escapeHTML(formatDateTime(m.datetime))}</td>`;
+        html += `<td>${escapeHTML(fase)}</td>`;
+        html += `<td class="team-name"><img src="${escapeAttr(getFlagUrl(local))}" alt="" loading="lazy"> ${escapeHTML(local)}</td>`;
         html += `<td>vs</td>`;
-        html += `<td class="team-name">${visitor} <img src="${getFlagUrl(visitor)}"></td>`;
-        html += `<td>${m.stadium || 'Por definir'}</td>`;
+        html += `<td class="team-name">${escapeHTML(visitor)} <img src="${escapeAttr(getFlagUrl(visitor))}" alt="" loading="lazy"></td>`;
+        html += `<td>${escapeHTML(m.stadium || 'Por definir')}</td>`;
         if (editMode) {
-            html += `<td><input type="number" class="fixture-input home-score" value="${m.homeScore ?? ''}" placeholder="-"></td>`;
-            html += `<td><input type="number" class="fixture-input away-score" value="${m.awayScore ?? ''}" placeholder="-"></td>`;
+            html += `<td><input type="number" min="0" max="99" class="fixture-input home-score" value="${escapeAttr(m.homeScore ?? '')}" placeholder="-"></td>`;
+            html += `<td><input type="number" min="0" max="99" class="fixture-input away-score" value="${escapeAttr(m.awayScore ?? '')}" placeholder="-"></td>`;
         } else {
-            html += `<td>${resultado}</td>`;
+            html += `<td>${escapeHTML(resultado)}</td>`;
         }
-        html += `<td><a href="${googleCalUrl}" target="_blank" style="color:#ffb347;">📅</a></td></tr>`;
+        html += `<td><a href="${escapeAttr(googleCalUrl)}" target="_blank" rel="noopener noreferrer" style="color:#ffb347;">📅</a></td></tr>`;
     }
     html += '</tbody></table></div>';
     container.innerHTML = html;
@@ -1254,6 +1357,10 @@ function populateTeamFilter() {
     if (saved && [...select.options].some(o => o.value === saved)) {
         select.value = saved;
         currentFixtureFilter = saved;
+    } else {
+        // Primera carga: forzar "Todos los equipos"
+        select.value = "";
+        currentFixtureFilter = "";
     }
     select.addEventListener('change', function () {
         currentFixtureFilter = this.value;
@@ -1279,6 +1386,10 @@ function populateGroupFilter() {
     if (saved && [...select.options].some(o => o.value === saved)) {
         select.value = saved;
         currentGroupFilter = saved;
+    } else {
+        // Primera carga: forzar "Todos los equipos"
+        select.value = "";
+        currentGroupFilter = "";
     }
     select.addEventListener('change', function() {
         currentGroupFilter = this.value;
@@ -1287,18 +1398,76 @@ function populateGroupFilter() {
     });
 }
 
+
+
+
+
+
+
+
+function populateResultFilter() {
+    const select = document.getElementById('resultTeamFilter');
+    if (!select) return;
+
+    // Recolectamos todos los equipos de partidos finalizados (grupos + eliminatorias)
+    const finished = currentMatches.filter(m => m.status === "FINISHED" && m.homeScore !== null);
+    const finishedKO = knockoutSlots.filter(m => m.status === "FINISHED" && m.homeScore !== null && m.local && m.visitor);
+    const allFinished = [...finished, ...finishedKO];
+
+    const teams = new Set();
+    allFinished.forEach(m => {
+        const local = m.homeTeam || m.local;
+        const visitor = m.awayTeam || m.visitor;
+        if (local) teams.add(local);
+        if (visitor) teams.add(visitor);
+    });
+    const sorted = Array.from(teams).sort((a, b) => a.localeCompare(b));
+
+    select.innerHTML = '';
+    select.appendChild(new Option("📅 Partidos de hoy", "__TODAY__"));
+    select.appendChild(new Option("Todos los equipos", ""));
+    sorted.forEach(team => select.appendChild(new Option(team, team)));
+
+    const saved = localStorage.getItem('worldcup_resultFilter');
+    if (saved && [...select.options].some(o => o.value === saved)) {
+        select.value = saved;
+        currentResultFilter = saved;
+    } else {
+        select.value = "";
+        currentResultFilter = "";
+    }
+
+    select.addEventListener('change', function() {
+        currentResultFilter = this.value;
+        localStorage.setItem('worldcup_resultFilter', currentResultFilter);
+        renderResults();
+    });
+}
+
+
+
+
+
+
+
+
+
 // ==================== TABLA DE GOLEADORES ====================
+const SCORERS_REFRESH_INTERVAL = 10 * 60 * 1000;
 let scorersData = [];
 let scorersTimestamp = 0;
-const savedScorers = localStorage.getItem('worldcup2026_scorers');
+const savedScorers = readJSONStorage('worldcup2026_scorers', []);
 const savedScorersTs = localStorage.getItem('worldcup2026_scorers_ts');
-if (savedScorers) {
-    try {
-        scorersData = JSON.parse(savedScorers);
-        scorersTimestamp = parseInt(savedScorersTs) || 0;
-    } catch(e) {}
+if (Array.isArray(savedScorers)) {
+    scorersData = savedScorers;
+    scorersTimestamp = parseInt(savedScorersTs, 10) || 0;
 }
-async function fetchScorers() {
+async function fetchScorers(force = false) {
+    const now = Date.now();
+    if (!force && scorersData.length && now - scorersTimestamp < SCORERS_REFRESH_INTERVAL) {
+        console.log("🥅 Goleadores recientes en caché, se evita una llamada extra.");
+        return false;
+    }
     console.log("🥅 Obteniendo tabla de goleadores...");
     try {
         const res = await apiFetch(`/competitions/${COMPETITION_ID}/scorers`);
@@ -1308,11 +1477,10 @@ async function fetchScorers() {
         }
         const data = await res.json();
         if (data.scorers && data.scorers.length) {
-            const now = Date.now();
             if (now > scorersTimestamp) {
                 scorersData = data.scorers;
                 scorersTimestamp = now;
-                localStorage.setItem('worldcup2026_scorers', JSON.stringify(scorersData));
+                saveJSONStorage('worldcup2026_scorers', scorersData);
                 localStorage.setItem('worldcup2026_scorers_ts', now.toString());
                 console.log(`✅ Goleadores actualizados (${scorersData.length} jugadores)`);
             } else {
@@ -1348,11 +1516,11 @@ function renderScorers() {
         const teamName = TEAM_MAP_REVERSE[s.team.name] || s.team.name;
         html += `<tr>
             <td>${i+1}</td>
-            <td style="text-align:left;">${playerName}</td>
-            <td><img src="${getFlagUrl(teamName)}" style="width:24px;height:16px;margin-right:6px;"> ${teamName}</td>
-            <td>${s.goals}</td>
-            <td>${s.assists??0}</td>
-            <td>${s.penalties??0}</td>
+            <td style="text-align:left;">${escapeHTML(playerName)}</td>
+            <td><img src="${escapeAttr(getFlagUrl(teamName))}" alt="" loading="lazy" style="width:24px;height:16px;margin-right:6px;"> ${escapeHTML(teamName)}</td>
+            <td>${escapeHTML(s.goals)}</td>
+            <td>${escapeHTML(s.assists??0)}</td>
+            <td>${escapeHTML(s.penalties??0)}</td>
         </tr>`;
     }
     html += '</tbody></table></div>';
@@ -1387,10 +1555,10 @@ function renderStandings() {
             const t = table[i];
             html += `<tr>
                 <td>${i+1}</td>
-                <td><img src="${getFlagUrl(t.team)}" style="width:20px;height:14px;margin-right:6px;"> ${t.team}</td>
-                <td>${t.pj}</td><td>${t.g}</td><td>${t.e}</td><td>${t.p}</td>
-                <td>${t.gf}</td><td>${t.gc}</td><td>${t.dg}</td>
-                <td class="standings-pts"><strong>${t.pts}</strong></td>
+                <td><img src="${escapeAttr(getFlagUrl(t.team))}" alt="" loading="lazy" style="width:20px;height:14px;margin-right:6px;"> ${escapeHTML(t.team)}</td>
+                <td>${escapeHTML(t.pj)}</td><td>${escapeHTML(t.g)}</td><td>${escapeHTML(t.e)}</td><td>${escapeHTML(t.p)}</td>
+                <td>${escapeHTML(t.gf)}</td><td>${escapeHTML(t.gc)}</td><td>${escapeHTML(t.dg)}</td>
+                <td class="standings-pts"><strong>${escapeHTML(t.pts)}</strong></td>
             </tr>`;
         }
         html += `</tbody></table></div></div>`;
@@ -1418,10 +1586,8 @@ const API_FOOTBALL_TEAM_IDS = {
 
 async function fetchTeamSquad(teamId, teamName) {
     const cacheKey = `team_squad_${teamId}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-        try { return JSON.parse(cached); } catch(e) {}
-    }
+    const cached = readJSONStorage(cacheKey);
+    if (Array.isArray(cached)) return cached;
     let squad = [];
     try {
         const res = await apiFetch(`/teams/${teamId}`);
@@ -1455,7 +1621,7 @@ async function fetchTeamSquad(teamId, teamName) {
             } catch(e) {}
         }
     }
-    if (squad.length) localStorage.setItem(cacheKey, JSON.stringify(squad));
+    if (squad.length) saveJSONStorage(cacheKey, squad);
     return squad;
 }
 
@@ -1480,11 +1646,11 @@ function renderSquadModal(squad, teamName) {
         })() : '?';
         const flag = player.nationality ? getFlagUrlByCountry(player.nationality) : '';
         html += `<tr>
-            <td>${player.shirtNumber || '-'}</td>
-            <td>${player.name}</td>
-            <td>${player.position || '-'}</td>
-            <td>${age}</td>
-            <td>${flag ? `<img src="${flag}" style="width:20px;height:14px;vertical-align:middle;"> ` : ''}${player.nationality || '-'}</td>
+            <td>${escapeHTML(player.shirtNumber || '-')}</td>
+            <td>${escapeHTML(player.name)}</td>
+            <td>${escapeHTML(player.position || '-')}</td>
+            <td>${escapeHTML(age)}</td>
+            <td>${flag ? `<img src="${escapeAttr(flag)}" alt="" loading="lazy" style="width:20px;height:14px;vertical-align:middle;"> ` : ''}${escapeHTML(player.nationality || '-')}</td>
         </tr>`;
     }
     html += '</tbody></table>';
@@ -1519,7 +1685,7 @@ async function showTeamSquad(teamName) {
     modal.classList.add('active');
     const teamId = teamIdMap[teamName];
     if (!teamId) {
-        body.innerHTML = `<div class="squad-empty">⚠️ No se encontró ID para ${teamName}</div>`;
+        body.innerHTML = `<div class="squad-empty">⚠️ No se encontró ID para ${escapeHTML(teamName)}</div>`;
         title.textContent = `❌ Error`;
         return;
     }
@@ -1530,6 +1696,7 @@ async function showTeamSquad(teamName) {
 function closeSquadModal() {
     document.getElementById('squadModal').classList.remove('active');
 }
+document.getElementById('closeSquadModalBtn').addEventListener('click', closeSquadModal);
 document.getElementById('squadModal').addEventListener('click', function(e) {
     if (e.target === this) closeSquadModal();
 });
@@ -1563,7 +1730,7 @@ function hayPartidosEnVivoAhora() {
     return horaDecimal >= 12.0 || horaDecimal < 2.0;
 }
 
-async function fetchLiveWithFallback() {
+async function fetchLiveWithFallback(preloadedMatches = null) {
     const now = Date.now();
     if (now - lastApiFootballReset > 24 * 60 * 60 * 1000) {
         apiFootballDailyCalls = 0;
@@ -1604,6 +1771,13 @@ async function fetchLiveWithFallback() {
         }
     }
     console.log("🔄 Usando football-data.org para partidos en vivo.");
+    if (Array.isArray(preloadedMatches)) {
+        const liveMatches = preloadedMatches.filter(m =>
+            m.status === "LIVE" || m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HT"
+        );
+        console.log(`📋 football-data.org: ${liveMatches.length} partidos en vivo/HT.`);
+        return { source: 'football-data', data: liveMatches };
+    }
     try {
         const res = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (res.ok) {
@@ -1619,8 +1793,8 @@ async function fetchLiveWithFallback() {
     return { source: 'fallback', data: [] };
 }
 
-async function updateLiveMatches() {
-    const result = await fetchLiveWithFallback();
+async function updateLiveMatches(preloadedMatches = null) {
+    const result = await fetchLiveWithFallback(preloadedMatches);
     if (!result.data || result.data.length === 0) return false;
     let anyUpdate = false;
     if (result.source === 'api-football') {
@@ -1733,14 +1907,13 @@ async function fetchAllData() {
     console.log("🚀 Iniciando ciclo de actualización...");
     await fetchTeamIds();
     try {
-        const liveUpdated = await updateLiveMatches();
         const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (!listRes.ok) {
             if (listRes.status === 429) {
                 consecutive429++;
                 const wait = Math.min(90000, 30000 * consecutive429);
                 currentInterval = wait;
-                setTimeout(() => { currentInterval = 90000; isUpdating = false; fetchAllData(); }, wait);
+                setTimeout(() => { currentInterval = 90000; lastUpdateTime = 0; isUpdating = false; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
@@ -1749,6 +1922,7 @@ async function fetchAllData() {
         currentInterval = 90000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
+        const liveUpdated = await updateLiveMatches(apiMatches);
 
         const finishedUpdated = await updateFinishedMatches(apiMatches);
         const apiKnockout = apiMatches.filter(m => m.stage !== "GROUP_STAGE");
@@ -1766,8 +1940,8 @@ async function fetchAllData() {
 
         const anyUpdate = liveUpdated || finishedUpdated || apiKnockout.length > 0;
         if (anyUpdate) {
-            localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
-            localStorage.setItem('worldcup2026_knockoutSlots', JSON.stringify(knockoutSlots));
+            saveJSONStorage('worldcup2026_matches', currentMatches);
+            saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
             localStorage.setItem('worldcup2026_matches_ts', Date.now().toString());
         }
         renderGroups(); 
@@ -1776,10 +1950,10 @@ async function fetchAllData() {
         if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
         if (document.getElementById('standingsPanel').style.display !== 'none') renderStandings();
         const apiActiva = useApiFootballForLive ? 'API-Football' : 'football-data.org';
-        document.getElementById('lastUpdate').innerHTML = `✅ Actualizado ${new Date().toLocaleTimeString()} (${apiActiva})`;
+        document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (${apiActiva})`;
     } catch(e) {
         console.error("❌ Error en ciclo:", e);
-        document.getElementById('lastUpdate').innerHTML = `❌ Error: ${e.message}`;
+        document.getElementById('lastUpdate').textContent = `❌ Error: ${e.message}`;
     } finally {
         isUpdating = false;
 		console.log("✅ Ciclo de actualización completo.");
@@ -1796,9 +1970,11 @@ async function fetchAllData() {
     renderFixture(false); 
     populateTeamFilter();
     populateGroupFilter();
+	populateResultFilter();
     renderScorers();
     renderStandings();
-    await fetchScorers(); renderScorers();
+    await fetchScorers(); 
+	renderScorers();
     fetchAllData();
     setInterval(fetchAllData, currentInterval);
 })();
@@ -1822,7 +1998,7 @@ for (let btn of btns) {
         for (let b of btns) b.classList.remove('active');
         btn.classList.add('active');
         for (let p in panels) panels[p].style.display = p === tab ? 'block' : 'none';
-        if (tab === 'results') renderResults();
+        if (tab === 'results')  populateResultFilter(); renderResults();
         if (tab === 'news') renderNews();
         if (tab === 'knockout') renderKnockout();
         if (tab === 'fixture') renderFixture(fixtureEditMode);
@@ -1842,12 +2018,17 @@ if (editBtn && saveBtn) {
         saveBtn.style.display = fixtureEditMode ? 'inline-block' : 'none';
     });
     saveBtn.addEventListener('click', () => {
+        const parseScore = value => {
+            if (value === '') return null;
+            const parsed = Number.parseInt(value, 10);
+            return Number.isFinite(parsed) && parsed >= 0 ? Math.min(parsed, 99) : null;
+        };
         document.querySelectorAll('#fixtureContainer tr[data-id]').forEach(row => {
             const id = row.dataset.id;
             const homeInp = row.querySelector('.home-score'), awayInp = row.querySelector('.away-score');
             if (homeInp && awayInp) {
-                const hs = homeInp.value !== '' ? parseInt(homeInp.value) : null;
-                const as = awayInp.value !== '' ? parseInt(awayInp.value) : null;
+                const hs = parseScore(homeInp.value);
+                const as = parseScore(awayInp.value);
                 let match = currentMatches.find(m => m.id === id) || knockoutSlots.find(m => m.id === id);
                 if (match) {
                     match.homeScore = hs;
@@ -1856,8 +2037,8 @@ if (editBtn && saveBtn) {
                 }
             }
         });
-        localStorage.setItem('worldcup2026_matches', JSON.stringify(currentMatches));
-        localStorage.setItem('worldcup2026_knockoutSlots', JSON.stringify(knockoutSlots));
+        saveJSONStorage('worldcup2026_matches', currentMatches);
+        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
         renderGroups(); renderKnockout(); renderResults();
         fixtureEditMode = false;
         renderFixture(false);
