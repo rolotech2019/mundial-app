@@ -1791,7 +1791,7 @@ async function updateFinishedMatches(apiMatchesList) {
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
-let currentInterval = 60000;
+let currentInterval = 45000;
 let isUpdating = false;
 
 async function fetchAllData() {
@@ -1807,15 +1807,15 @@ async function fetchAllData() {
         if (!listRes.ok) {
             if (listRes.status === 429) {            // Si el límite de peticiones se ha excedido
                 consecutive429++;
-                const wait = Math.min(60000, 30000 * consecutive429);
+                const wait = Math.min(45000, 30000 * consecutive429);
                 currentInterval = wait;
-                setTimeout(() => { currentInterval = 60000; lastUpdateTime = 0; isUpdating = false; fetchAllData(); }, wait);
+                setTimeout(() => { currentInterval = 45000; lastUpdateTime = 0; isUpdating = false; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        currentInterval = 60000;
+        currentInterval = 45000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         const liveUpdated = await updateLiveMatches(apiMatches);
