@@ -4,7 +4,7 @@
 <script>
   (function() {
    
-    var VERSION = '7.4';
+    var VERSION = '7.5';
 	
 	    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias y filtrar por equipos, correción de errores menores';   
     window.UPDATE_NOTES = UPDATE_NOTES;
@@ -1328,19 +1328,29 @@ function getAllMatches() {
         round: "Grupo " + m.group,
         elapsed: m.elapsed
     }));
-    const ko = knockoutSlots.filter(s => s.local && s.visitor).map(m => ({
-        id: m.id,
-        home: m.local,
-        away: m.visitor,
-        homeScore: m.homeScore,
-        awayScore: m.awayScore,
-        status: m.status,
-        stadium: m.stadium,
-        datetime: m.date,
-        round: m.round,
-        elapsed: null
-    }));
-    return [...group, ...ko].sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+
+    // Incluir TODOS los slots de eliminatorias, incluso sin equipos
+    const ko = knockoutSlots.map(m => {
+        // Obtener los placeholders del texto del slot (ej. "A2 vs B2" → local = "A2", visitor = "B2")
+        const parts = (m.slot || '').split(' vs ');
+        const localPlaceholder = parts[0] ? parts[0].trim() : '?';
+        const visitorPlaceholder = parts[1] ? parts[1].trim() : '?';
+
+        return {
+            id: m.id,
+            home: m.local || localPlaceholder,   // nombre real si ya está definido
+            away: m.visitor || visitorPlaceholder,
+            homeScore: m.homeScore,
+            awayScore: m.awayScore,
+            status: m.status,
+            stadium: m.stadium,
+            datetime: m.date,
+            round: m.round,                     // "Dieciseisavos", "Octavos", etc.
+            elapsed: null
+        };
+    });
+
+    return [...group, ...ko].sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
 }
 
 
@@ -1350,6 +1360,8 @@ let currentGroupFilter = "";
 let currentFixtureFilter = "";
 let currentResultFilter = "";
 let currentKnockoutFilter = "";
+
+
 
 function renderFixture(editMode = false) {
     const container = document.getElementById('fixtureContainer');
@@ -1381,7 +1393,7 @@ function renderFixture(editMode = false) {
         return;
     }
     let html = '<div class="fixture-table-wrapper"><table class="fixture-table"><thead><tr>';
-    html += '<th>Fecha</th><th>Grupo</th><th>Local</th><th></th><th>Visitante</th><th>Estadio</th>';
+    html += '<th>Fecha</th><th>Fase</th><th>Local</th><th></th><th>Visitante</th><th>Estadio</th>';
     html += editMode ? '<th>G.Loc</th><th>G.Vis</th>' : '<th>Resultado</th>';
     html += '<th>Notificar</th></tr></thead><tbody>';
     for (const m of allMatches) {
