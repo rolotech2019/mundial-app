@@ -4,7 +4,7 @@
 <script>
   (function() {
    
-    var VERSION = '7.0';
+    var VERSION = '7.1';
 	
 	    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias, correciones menores';   
     window.UPDATE_NOTES = UPDATE_NOTES;
@@ -22,12 +22,12 @@
     window.APP_VERSION = VERSION;
     localStorage.setItem('app_version', VERSION);
 
-    if (versionChanged) {
-      keysToReset.forEach(function(key) { localStorage.removeItem(key); });
-      Object.keys(localStorage).forEach(function(key) {
-        if (key.indexOf('team_squad_') === 0) localStorage.removeItem(key);
-      });
-    }
+       if (versionChanged) {
+        // Guardamos la nota en sessionStorage (solo esta sesión)
+        sessionStorage.setItem('update_notes', UPDATE_NOTES || 'Datos renovados');
+        window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
+      }
+      window.UPDATE_NOTES = UPDATE_NOTES; // seguir expuesto
 
     if (stored !== VERSION) {
       localStorage.setItem('app_version_previous', VERSION);
@@ -39,7 +39,7 @@
           if (versionChanged) {
         // Guardar las notas de actualización antes de recargar
         const notas = window.UPDATE_NOTES || 'Datos renovados';
-        sessionStorage.setItem('update_notes', `🔄 v${VERSION} – ${notas}`);
+        sessionStorage.setItem('update_notes', UPDATE_NOTES || 'Datos renovados');
         window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
       }
     }
@@ -483,6 +483,8 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
         <h2>⚽ Fiesta Mundial 2026</h2>
         <p>Datos: API-Football (En juego) + football-data.org (respaldo)</p>
         <p>Versión <span id="appVersionDisplay"></span></p>
+		<!-- Notas de actualizaciones -->
+    <p id="updateNotesDisplay" style="color:#00B5D8; font-weight:bold;"></p>
         <p>Desarrollador: Rolando Mendoza Z. | Tarija - Bolivia 🇧🇴</p>
     </div>
 </div>
@@ -1910,8 +1912,13 @@ async function updateFinishedMatches(apiMatchesList) {
     if (display && window.APP_VERSION) {
       display.textContent = window.APP_VERSION;
     }
+    // Mostrar novedades en la pestaña Acerca de
+    var notesDisplay = document.getElementById('updateNotesDisplay');
+    if (notesDisplay) {
+      var notas = window.UPDATE_NOTES || '';
+      notesDisplay.textContent = notas ? '🔄 Novedades: ' + notas : '';
+    }
   })();
-
 
 
 
@@ -2011,17 +2018,31 @@ async function fetchAllData() {
     setInterval(fetchAllData, currentInterval);
 	
 	
-	  // 🎉 Toast de bienvenida (aparece apenas se cargue la interfaz)
- setTimeout(() => {
-        const updateNotes = sessionStorage.getItem('update_notes');
-        if (updateNotes) {
-            showToast(updateNotes, "info", 8000);
-            sessionStorage.removeItem('update_notes'); // para que no salga otra vez
+    // Toast de actualización (máx. 3 veces, por versión)
+    const updateNotes = window.UPDATE_NOTES;
+    const version = window.APP_VERSION || '0';
+    const toastKey = 'toast_shown_' + version;   // clave única por versión
+
+    if (updateNotes) {
+        let shown = parseInt(localStorage.getItem(toastKey), 10) || 0;
+
+        if (shown < 3) {
+            showToast(`🔄 v${version} – ${updateNotes}`, "info", 8000);
+            shown++;
+            localStorage.setItem(toastKey, shown);
         } else {
-            showToast(`⚽ ¡Bienvenido a la app del Mundial 2026!`, "success", 4000);
+            // Ya se mostró el máximo de veces → bienvenida normal
+            setTimeout(() => {
+                showToast(`⚽ ¡Bienvenido a la app del mundial 2026!`, "success", 4000);
+            }, 1500);
         }
-    }, 1000); // pequeña espera para que todo esté listo
-})();
+    } else {
+        setTimeout(() => {
+            showToast(`⚽ ¡Bienvenido a la app del mundial 2026!`, "success", 4000);
+        }, 1500);
+    }
+
+})(); 
 	
 	
 	
