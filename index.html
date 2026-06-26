@@ -4,9 +4,9 @@
 <script>
   (function() {
    
-    var VERSION = '7.1';
+    var VERSION = '7.2';
 	
-	    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias, correciones menores';   
+	    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias y filtrar por equipos, correción de errores menores';   
     window.UPDATE_NOTES = UPDATE_NOTES;
 	
     var stored = localStorage.getItem('app_version_previous');
@@ -434,6 +434,12 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 </div>
 
 <div id="knockoutPanel" class="panel" style="display: none;">
+    <div style="text-align:center; margin-bottom:15px;">
+        <label for="knockoutTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
+        <select id="knockoutTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+            <option value="">Todos los equipos</option>
+        </select>
+    </div>
     <div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div>
 </div>
 
@@ -468,7 +474,17 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
     </div>
     <div class="scroll-hint">📱 Desliza horizontalmente para ver todos los datos</div>
     <div class="data-container" id="fixtureContainer">📅 Fixture completo...</div>
+	
+	  <div class="data-container" style="margin-top:25px;">
+        <h3 style="color:#00B5D8; margin-bottom:10px;">⏰ Próximos partidos</h3>
+        <div id="upcomingContainer">Cargando...</div>
+    </div>
+	
 </div>
+
+
+  
+
 
 <div id="standingsPanel" class="panel" style="display: none;">
     <div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div>
@@ -1061,7 +1077,14 @@ function renderKnockout() {
     const rounds = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinales", "Tercer puesto", "Final"];
     let html = '<div class="knockout-grid">';
     for (let round of rounds) {
-        const slots = knockoutSlots.filter(s => s.round === round);
+        let slots = knockoutSlots.filter(s => s.round === round);
+if (currentKnockoutFilter) {
+    slots = slots.filter(s => {
+        const local = s.local || '';
+        const visitor = s.visitor || '';
+        return local === currentKnockoutFilter || visitor === currentKnockoutFilter;
+    });
+}
         if (slots.length === 0) continue;
         html += `<div class="knockout-round"><h3>${round}</h3>`;
         for (let slot of slots) {
@@ -1181,6 +1204,42 @@ function renderKnockout() {
 
 
 
+function renderUpcomingMatches() {
+    const container = document.getElementById('upcomingContainer');
+    if (!container) return;
+
+    const now = new Date();
+    const allMatches = getAllMatches().filter(m => new Date(m.datetime) > now);
+    const upcoming = allMatches.slice(0, 10);
+
+    if (!upcoming.length) {
+        container.innerHTML = '<div class="empty-message">No hay próximos partidos programados.</div>';
+        return;
+    }
+
+    let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+    for (const m of upcoming) {
+        const fase = m.round;
+        const local = m.home || m.homeTeam;
+        const visitante = m.away || m.awayTeam;
+        html += `
+        <div style="display:flex; align-items:center; gap:10px; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px;">
+            <span style="font-size:0.8rem; color:#00B5D8; min-width:70px;">📅 ${escapeHTML(formatDateTime(m.datetime))}</span>
+            <span style="flex:1; text-align:right;">${escapeHTML(local)}</span>
+            <img src="${escapeAttr(getFlagUrl(local))}" style="width:20px;height:14px;" alt="">
+            <span style="font-weight:bold;">vs</span>
+            <img src="${escapeAttr(getFlagUrl(visitante))}" style="width:20px;height:14px;" alt="">
+            <span style="flex:1;">${escapeHTML(visitante)}</span>
+            <span style="font-size:0.7rem; color:#f3f6f7">${escapeHTML(fase)}</span>
+        </div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+
+
+
 // ==================== RESULTADOS ====================
 function renderResults() {
     let finished = currentMatches.filter(m => m.status === "FINISHED" && m.homeScore !== null);
@@ -1232,7 +1291,7 @@ function getAllMatches() {
         status: m.status,
         stadium: m.stadium,
         datetime: m.datetime,
-        round: "Grupo",
+        round: "Grupo " + m.group,
         elapsed: m.elapsed
     }));
     const ko = knockoutSlots.filter(s => s.local && s.visitor).map(m => ({
@@ -1256,6 +1315,7 @@ let fixtureEditMode = false;
 let currentGroupFilter = "";
 let currentFixtureFilter = "";
 let currentResultFilter = "";
+let currentKnockoutFilter = "";
 
 function renderFixture(editMode = false) {
     const container = document.getElementById('fixtureContainer');
@@ -1287,7 +1347,7 @@ function renderFixture(editMode = false) {
         return;
     }
     let html = '<div class="fixture-table-wrapper"><table class="fixture-table"><thead><tr>';
-    html += '<th>Fecha</th><th>Fase</th><th>Local</th><th></th><th>Visitante</th><th>Estadio</th>';
+    html += '<th>Fecha</th><th>Grupo</th><th>Local</th><th></th><th>Visitante</th><th>Estadio</th>';
     html += editMode ? '<th>G.Loc</th><th>G.Vis</th>' : '<th>Resultado</th>';
     html += '<th>Notificar</th></tr></thead><tbody>';
     for (const m of allMatches) {
@@ -1422,6 +1482,40 @@ function populateResultFilter() {
     });
 }
 
+
+
+
+function populateKnockoutFilter() {
+    const select = document.getElementById('knockoutTeamFilter');
+    if (!select) return;
+
+    const teams = new Set();
+    // Recorremos todos los slots de eliminatorias que tengan equipos asignados
+    knockoutSlots.forEach(slot => {
+        if (slot.local && slot.local !== '?') teams.add(slot.local);
+        if (slot.visitor && slot.visitor !== '?') teams.add(slot.visitor);
+    });
+
+    const sorted = Array.from(teams).sort((a, b) => a.localeCompare(b));
+    select.innerHTML = '';
+    select.appendChild(new Option("Todos los equipos", ""));
+    sorted.forEach(team => select.appendChild(new Option(team, team)));
+
+    const saved = localStorage.getItem('worldcup_knockoutFilter');
+    if (saved && [...select.options].some(o => o.value === saved)) {
+        select.value = saved;
+        currentKnockoutFilter = saved;
+    } else {
+        select.value = "";
+        currentKnockoutFilter = "";
+    }
+
+    select.addEventListener('change', function() {
+        currentKnockoutFilter = this.value;
+        localStorage.setItem('worldcup_knockoutFilter', currentKnockoutFilter);
+        renderKnockout();
+    });
+}
 
 
 
@@ -2010,11 +2104,13 @@ async function fetchAllData() {
     populateTeamFilter();
     populateGroupFilter();
 	populateResultFilter();
+	populateKnockoutFilter();
     renderScorers();
     renderStandings();
     await fetchScorers(); 
 	renderScorers();
     fetchAllData();
+	renderUpcomingMatches();
     setInterval(fetchAllData, currentInterval);
 	
 	
@@ -2069,7 +2165,10 @@ for (let btn of btns) {
         for (let p in panels) panels[p].style.display = p === tab ? 'block' : 'none';
         if (tab === 'results')  populateResultFilter(); renderResults();
         if (tab === 'news') renderNews();
-        if (tab === 'knockout') renderKnockout();
+        if (tab === 'knockout') {
+    populateKnockoutFilter(); // por si hay nuevos equipos
+    renderKnockout();
+}
         if (tab === 'fixture') renderFixture(fixtureEditMode);
         if (tab === 'standings') renderStandings();
         if (tab === 'scorers') renderScorers();
