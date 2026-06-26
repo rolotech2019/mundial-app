@@ -4,7 +4,11 @@
 <script>
   (function() {
    
-    var VERSION = '6.9';
+    var VERSION = '7.0';
+	
+	    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias, correciones menores';   
+    window.UPDATE_NOTES = UPDATE_NOTES;
+	
     var stored = localStorage.getItem('app_version_previous');
     var versionChanged = stored && stored !== VERSION;
     var keysToReset = [
@@ -32,10 +36,16 @@
           .then(function(keys) { keys.forEach(function(k) { caches.delete(k); }); })
           .catch(function() {});
       }
-      if (versionChanged) {
+          if (versionChanged) {
+        // Guardar las notas de actualización antes de recargar
+        const notas = window.UPDATE_NOTES || 'Datos renovados';
+        sessionStorage.setItem('update_notes', `🔄 v${VERSION} – ${notas}`);
         window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
       }
     }
+	
+	    window.versionChanged = versionChanged;
+	
   })();
 </script>
 
@@ -334,6 +344,44 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
     margin-top: 2px;
 }
 
+
+
+/* ========== TOASTS (notificaciones deslizantes) ========== */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+}
+
+.toast {
+    background: rgba(11, 29, 58, 0.95);
+    backdrop-filter: blur(15px);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    border: 1px solid rgba(0, 181, 216, 0.3);
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    max-width: 320px;
+    word-wrap: break-word;
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast.info  { border-left: 4px solid #00B5D8; }
+.toast.success { border-left: 4px solid #00843D; }
+.toast.warning { border-left: 4px solid #D50032; }
+.toast.goal  { border-left: 4px solid #FFD700; }
 </style>
 </head>
 <body>
@@ -365,10 +413,10 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 <div class="tabs">
     <button class="tab-btn active" data-tab="fixture">📅 Fixture</button>
     <button class="tab-btn" data-tab="groups">📋 Fase Grupos</button>
+	<button class="tab-btn" data-tab="knockout">🚩 Eliminatorias</button>
     <button class="tab-btn" data-tab="results">✅ Resultados</button>
     <button class="tab-btn" data-tab="standings">🏆 Clasificación</button>
     <button class="tab-btn" data-tab="scorers">⚽ Goleadores</button>
-    <button class="tab-btn" data-tab="knockout">🚩 Eliminatorias</button>
     <button class="tab-btn" data-tab="news">📰 Noticias</button>
     <button class="tab-btn" data-tab="about">ℹ️ Acerca de</button>
 </div>
@@ -425,6 +473,10 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 <div id="standingsPanel" class="panel" style="display: none;">
     <div class="data-container" id="standingsContainer">⏳ Cargando tabla de posiciones...</div>
 </div>
+
+
+<!-- ===== CONTENEDOR DE TOASTS ===== -->
+<div class="toast-container" id="toastContainer"></div>
 
 <div id="aboutPanel" class="panel" style="display: none;">
     <div class="data-container about-content">
@@ -995,6 +1047,12 @@ function updateSlotsFromApi(apiKnockoutMatches) {
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 }
 
+
+
+
+
+
+
 function renderKnockout() {
     const container = document.getElementById('knockoutContainer');
     if (!container) return;
@@ -1009,15 +1067,36 @@ function renderKnockout() {
             if (slot.status === 'LIVE') cardClass = 'live';
             else if (slot.status === 'FINISHED') cardClass = 'finished';
 
-            const local = slot.local || '?';
-            const visitor = slot.visitor || '?';
-            const localFlag = slot.local ? getFlagUrl(slot.local) : '';
-            const visitorFlag = slot.visitor ? getFlagUrl(slot.visitor) : '';
-            const safeLocal = escapeHTML(local);
-            const safeVisitor = escapeHTML(visitor);
-            const safeLocalAttr = escapeAttr(local);
-            const safeVisitorAttr = escapeAttr(visitor);
+            // ===== NUEVA LÓGICA PARA MOSTRAR PLACEHOLDERS OFICIALES =====
+            const desc = slot.slot || '';                         // ej. "A2 vs B2", "Ganador KO-0 vs Ganador KO-2"
+            const descParts = desc.split(' vs ');                 // separar local y visitante
 
+            let localName, visitorName, localFlag, visitorFlag;
+
+            if (slot.local) {
+                // Ya sabemos el equipo → nombre real + bandera
+                localName = slot.local;
+                localFlag = getFlagUrl(slot.local);
+            } else {
+                // Usamos el placeholder de la izquierda (ej. "A2", "E1", "Ganador KO-0")
+                localName = descParts[0] ? descParts[0].trim() : '?';
+                localFlag = '';   // sin bandera
+            }
+
+            if (slot.visitor) {
+                visitorName = slot.visitor;
+                visitorFlag = getFlagUrl(slot.visitor);
+            } else {
+                visitorName = descParts[1] ? descParts[1].trim() : '?';
+                visitorFlag = '';
+            }
+
+            const safeLocal = escapeHTML(localName);
+            const safeVisitor = escapeHTML(visitorName);
+            const safeLocalAttr = escapeAttr(localName);
+            const safeVisitorAttr = escapeAttr(visitorName);
+
+            // Marcador
             let scoreHTML = '';
             if (slot.status === 'FINISHED' && slot.homeScore !== null) {
                 scoreHTML = `
@@ -1037,6 +1116,7 @@ function renderKnockout() {
                 scoreHTML = `<div class="score-box"><span style="font-size:1rem; color:#ffb347;">vs</span></div>`;
             }
 
+            // Badge de estado
             let statusBadge = '';
             if (slot.status === 'LIVE') {
                 statusBadge = '<span class="status-badge live">🔴 En juego</span>';
@@ -1048,7 +1128,7 @@ function renderKnockout() {
 
             const stadiumText = slot.stadium && slot.stadium !== 'Por definir' ? slot.stadium : '';
 
-            html += `
+                     html += `
             <div class="match-card ${cardClass}">
                 <div class="match-header">
                     <div class="match-date">📅 ${escapeHTML(formatDateTime(slot.date))}</div>
@@ -1059,12 +1139,12 @@ function renderKnockout() {
                         ${localFlag ? `<img src="${escapeAttr(localFlag)}" alt="${safeLocalAttr}" loading="lazy">` : ''}
                         <span>${safeLocal}</span>
                     </div>
+                    ${scoreHTML}
                     <div class="team-row">
                         ${visitorFlag ? `<img src="${escapeAttr(visitorFlag)}" alt="${safeVisitorAttr}" loading="lazy">` : ''}
                         <span>${safeVisitor}</span>
                     </div>
                 </div>
-                ${scoreHTML}
                 ${stadiumText ? `<div class="match-footer">🏟️ ${escapeHTML(stadiumText)}</div>` : ''}
             </div>`;
         }
@@ -1343,7 +1423,26 @@ function populateResultFilter() {
 
 
 
+// ==================== SISTEMA DE NOTIFICACIONES (TOASTS) ====================
+function showToast(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
 
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    // Forzar reflow para que la animación funcione
+    void toast.offsetWidth;
+    toast.classList.add('show');
+
+    // Eliminar después de la duración
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400); // esperar a que termine la animación
+    }, duration);
+}
 
 
 
@@ -1693,6 +1792,7 @@ async function updateLiveMatches(preloadedMatches = null) {
     const result = await fetchLiveWithFallback(preloadedMatches);
     if (!result.data || result.data.length === 0) return false;
     let anyUpdate = false;
+
     if (result.source === 'api-football') {
         for (let apiMatch of result.data) {
             const homeSp = TEAM_MAP_REVERSE[apiMatch.teams.home.name];
@@ -1708,7 +1808,22 @@ async function updateLiveMatches(preloadedMatches = null) {
                 else newStatus = "SCHEDULED";
                 const newHome = apiMatch.goals.home;
                 const newAway = apiMatch.goals.away;
-                if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore || elapsed !== localMatch.elapsed) {
+
+                // ===== DETECCIÓN DE GOLES (CON MINUTO) =====
+                const oldHome = localMatch.homeScore ?? 0;
+                const oldAway = localMatch.awayScore ?? 0;
+                if (newHome > oldHome) {
+                    showToast(`⚽ ¡Gol de ${localMatch.homeTeam}! (${elapsed}')`, "goal");
+                }
+                if (newAway > oldAway) {
+                    showToast(`⚽ ¡Gol de ${localMatch.awayTeam}! (${elapsed}')`, "goal");
+                }
+
+                // ===== ACTUALIZACIÓN DE DATOS =====
+                if (newStatus !== localMatch.status ||
+                    newHome !== localMatch.homeScore ||
+                    newAway !== localMatch.awayScore ||
+                    elapsed !== localMatch.elapsed) {
                     localMatch.status = newStatus;
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
@@ -1731,7 +1846,21 @@ async function updateLiveMatches(preloadedMatches = null) {
                 else newStatus = "SCHEDULED";
                 let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
                 let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
-                if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
+
+                // ===== DETECCIÓN DE GOLES (SIN MINUTO EXACTO) =====
+                const oldHome = localMatch.homeScore ?? 0;
+                const oldAway = localMatch.awayScore ?? 0;
+                if (newHome !== null && newHome > oldHome) {
+                    showToast(`⚽ ¡Gol de ${localMatch.homeTeam}!`, "goal");
+                }
+                if (newAway !== null && newAway > oldAway) {
+                    showToast(`⚽ ¡Gol de ${localMatch.awayTeam}!`, "goal");
+                }
+
+                // ===== ACTUALIZACIÓN DE DATOS =====
+                if (newStatus !== localMatch.status ||
+                    newHome !== localMatch.homeScore ||
+                    newAway !== localMatch.awayScore) {
                     localMatch.status = newStatus;
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
@@ -1791,7 +1920,7 @@ async function updateFinishedMatches(apiMatchesList) {
 // ==================== CICLO PRINCIPAL ====================
 let lastUpdateTime = 0;
 let consecutive429 = 0;
-let currentInterval = 45000;
+let currentInterval = 60000;
 let isUpdating = false;
 
 async function fetchAllData() {
@@ -1826,10 +1955,17 @@ async function fetchAllData() {
             updateSlotsFromApi(apiKnockout);
         }
 
-        const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
-        if (allGroupFinished) {
-            fillKnockoutSlotsFromGroups();
-        }
+
+
+
+       const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
+       if (allGroupFinished) {
+          fillKnockoutSlotsFromGroups();
+     }
+		
+		// fillKnockoutSlotsFromGroups();
+		
+		
 
         const scorersUpdated = await fetchScorers();
         if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none') renderScorers();
@@ -1873,7 +2009,23 @@ async function fetchAllData() {
 	renderScorers();
     fetchAllData();
     setInterval(fetchAllData, currentInterval);
+	
+	
+	  // 🎉 Toast de bienvenida (aparece apenas se cargue la interfaz)
+ setTimeout(() => {
+        const updateNotes = sessionStorage.getItem('update_notes');
+        if (updateNotes) {
+            showToast(updateNotes, "info", 8000);
+            sessionStorage.removeItem('update_notes'); // para que no salga otra vez
+        } else {
+            showToast(`⚽ ¡Bienvenido a la app del Mundial 2026!`, "success", 4000);
+        }
+    }, 1000); // pequeña espera para que todo esté listo
 })();
+	
+	
+	
+
 
 // ==================== PESTAÑAS ====================
 const btns = document.querySelectorAll('.tab-btn');
