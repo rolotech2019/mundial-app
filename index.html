@@ -349,12 +349,13 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 /* ========== TOASTS (notificaciones deslizantes) ========== */
 .toast-container {
     position: fixed;
-    top: 80px;          /* justo debajo de las pestañas */
+    top: 80px;                    /* debajo de las pestañas */
     right: 20px;
     z-index: 9999;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;  /* el más nuevo aparece arriba */
     gap: 10px;
+    pointer-events: none;           /* para no interferir con clics en la interfaz */
 }
 
 .toast {
@@ -371,6 +372,7 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
     transition: transform 0.4s ease, opacity 0.4s ease;
     max-width: 320px;
     word-wrap: break-word;
+    pointer-events: auto;           /* sí se puede interactuar con el toast */
 }
 
 .toast.show {
@@ -378,10 +380,10 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
     opacity: 1;
 }
 
-.toast.info  { border-left: 4px solid #00B5D8; }
+.toast.info   { border-left: 4px solid #00B5D8; }
 .toast.success { border-left: 4px solid #00843D; }
 .toast.warning { border-left: 4px solid #D50032; }
-.toast.goal  { border-left: 4px solid #FFD700; }
+.toast.goal   { border-left: 4px solid #FFD700; }
 </style>
 </head>
 <body>
