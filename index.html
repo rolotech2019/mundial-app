@@ -3,49 +3,57 @@
 <head>
 <script>
   (function() {
-   
     var VERSION = '7.5';
-	
-	    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias y filtrar por equipos, correción de errores menores';   
+    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias y filtrar por equipos, correción de errores menores';
     window.UPDATE_NOTES = UPDATE_NOTES;
-	
+    window.APP_VERSION = VERSION;
+
     var stored = localStorage.getItem('app_version_previous');
     var versionChanged = stored && stored !== VERSION;
-    var keysToReset = [
-      'worldcup2026_matches',
-      'worldcup2026_knockoutSlots',
-      'worldcup2026_matches_ts',
-      'worldcup2026_scorers',
-      'worldcup2026_scorers_ts'
-    ];
 
-    window.APP_VERSION = VERSION;
+    // 1. Guardar la versión actual para el próximo inicio
     localStorage.setItem('app_version', VERSION);
 
-       if (versionChanged) {
-        // Guardamos la nota en sessionStorage (solo esta sesión)
-        sessionStorage.setItem('update_notes', UPDATE_NOTES || 'Datos renovados');
-        window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
-      }
-      window.UPDATE_NOTES = UPDATE_NOTES; // seguir expuesto
-
-    if (stored !== VERSION) {
-      localStorage.setItem('app_version_previous', VERSION);
+    // 2. Si es una versión nueva, limpiar cachés y datos viejos
+    if (versionChanged) {
+      // Limpiar la caché de la aplicación (Service Worker / Cache API)
       if (window.caches && caches.keys) {
-        caches.keys()
-          .then(function(keys) { keys.forEach(function(k) { caches.delete(k); }); })
-          .catch(function() {});
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        }).catch(function(){});
       }
-          if (versionChanged) {
-        // Guardar las notas de actualización antes de recargar
-        const notas = window.UPDATE_NOTES || 'Datos renovados';
-        sessionStorage.setItem('update_notes', UPDATE_NOTES || 'Datos renovados');
-        window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
-      }
+
+      // Eliminar datos antiguos del localStorage que puedan causar conflictos
+      var keysToReset = [
+        'worldcup2026_matches',
+        'worldcup2026_knockoutSlots',
+        'worldcup2026_matches_ts',
+        'worldcup2026_scorers',
+        'worldcup2026_scorers_ts'
+      ];
+      keysToReset.forEach(function(key) { localStorage.removeItem(key); });
+
+      // También limpiamos las plantillas cacheadas
+      Object.keys(localStorage).forEach(function(key) {
+        if (key.indexOf('team_squad_') === 0) localStorage.removeItem(key);
+      });
     }
-	
-	    window.versionChanged = versionChanged;
-	
+
+    // 3. Actualizar la versión anterior guardada (siempre)
+    localStorage.setItem('app_version_previous', VERSION);
+
+    // 4. Guardar las notas de actualización en sessionStorage para el toast
+    if (versionChanged) {
+      sessionStorage.setItem('update_notes', UPDATE_NOTES || 'Datos renovados');
+    }
+
+    // 5. Redirigir UNA SOLA VEZ si la versión cambió
+    if (versionChanged) {
+      window.location.replace(window.location.href.split('?')[0] + '?v=' + VERSION + '-' + Date.now());
+    }
+
+    // 6. Exponer si hubo cambio para usarlo en init()
+    window.versionChanged = versionChanged;
   })();
 </script>
 
