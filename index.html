@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '7.6';
+    var VERSION = '8';
     var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias y filtrar por equipos, correción de errores menores';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -2113,12 +2113,12 @@ async function fetchAllData() {
 
 
 
-    //   const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
-    //   if (allGroupFinished) {
-     //     fillKnockoutSlotsFromGroups();
-   //  }
+      const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
+      if (allGroupFinished) {
+         fillKnockoutSlotsFromGroups();
+  }
 		
-	 fillKnockoutSlotsFromGroups();
+	// fillKnockoutSlotsFromGroups();
 		
 		
 
