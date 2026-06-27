@@ -3,8 +3,8 @@
 <head>
 <script>
   (function() {
-    var VERSION = '8';
-    var UPDATE_NOTES = 'Avisos de gol en vivo, corrección de cruces en eliminatorias y filtrar por equipos, correción de errores menores';
+    var VERSION = '8.5';
+    var UPDATE_NOTES = 'Avisos de gol en vivo, cruces de eliminatorias se generan al finalizar fase de grupos, eventos de cada partido (goles por minuto, jugador que convirtió, tarjetas. Solo partidos con fecha de 1 día de diferencia.), correción de errores';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
 
@@ -419,6 +419,35 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 }
 
 
+
+
+/* Modal de eventos */
+#matchEventsModal .event-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.9rem;
+}
+#matchEventsModal .event-minute {
+    font-weight: bold;
+    color: #00B5D8;
+    min-width: 40px;
+}
+#matchEventsModal .event-icon {
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+#matchEventsModal .event-detail {
+    flex: 1;
+}
+#matchEventsModal .event-team {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
 </style>
 </head>
 <body>
@@ -557,6 +586,25 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
         </div>
     </div>
 </div>
+
+
+
+
+
+<!-- ===== MODAL DE EVENTOS DEL PARTIDO ===== -->
+<div id="matchEventsModal" class="squad-modal-overlay">
+    <div class="squad-modal" style="max-width:500px">
+        <div class="squad-modal-header">
+            <span id="matchEventsTitle">⚽ Eventos del partido</span>
+            <button id="closeMatchEventsBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="squad-modal-body" id="matchEventsBody">
+            <div class="squad-loading">⏳ Cargando eventos...</div>
+        </div>
+    </div>
+</div>
+
+
 
 <script>
 // ==================== CONFIGURACIÓN ====================
@@ -942,7 +990,8 @@ function renderGroups() {
                 statusText = "✅ Finalizado";
                 scoreDisplay = `${m.homeScore} - ${m.awayScore}`;
             }
-            html += `<div class="match-item"><div class="match-teams"><div class="team"><img src="${escapeAttr(getFlagUrl(m.homeTeam))}" alt="" loading="lazy"><span class="team-name">${escapeHTML(m.homeTeam)}</span></div><div class="score">${escapeHTML(scoreDisplay)}</div><div class="team"><span class="team-name">${escapeHTML(m.awayTeam)}</span><img src="${escapeAttr(getFlagUrl(m.awayTeam))}" alt="" loading="lazy"></div></div><div class="match-info"><span>🏟️ ${escapeHTML(m.stadium)}</span><span>⏰ ${escapeHTML(formatDateTime(m.datetime))}</span><span class="status-badge ${escapeAttr(statusClass)}">${escapeHTML(statusText)}</span></div></div>`;
+            // Se agregó data-match-id y cursor pointer
+            html += `<div class="match-item" data-match-id="${escapeAttr(m.id)}" style="cursor:pointer;"><div class="match-teams"><div class="team"><img src="${escapeAttr(getFlagUrl(m.homeTeam))}" alt="" loading="lazy"><span class="team-name">${escapeHTML(m.homeTeam)}</span></div><div class="score">${escapeHTML(scoreDisplay)}</div><div class="team"><span class="team-name">${escapeHTML(m.awayTeam)}</span><img src="${escapeAttr(getFlagUrl(m.awayTeam))}" alt="" loading="lazy"></div></div><div class="match-info"><span>🏟️ ${escapeHTML(m.stadium)}</span><span>⏰ ${escapeHTML(formatDateTime(m.datetime))}</span><span class="status-badge ${escapeAttr(statusClass)}">${escapeHTML(statusText)}</span></div></div>`;
         }
         html += `</div></div>`;
     }
@@ -952,6 +1001,15 @@ function renderGroups() {
             e.stopPropagation();
             const teamName = this.getAttribute('data-team');
             if (teamName) showTeamSquad(teamName);
+        });
+    });
+
+    // Nuevo: clic en partido para ver eventos
+    document.querySelectorAll('.match-item[data-match-id]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const matchId = this.getAttribute('data-match-id');
+            if (matchId) showMatchEvents(matchId);
         });
     });
 }
@@ -1115,13 +1173,13 @@ function renderKnockout() {
     let html = '<div class="knockout-grid">';
     for (let round of rounds) {
         let slots = knockoutSlots.filter(s => s.round === round);
-if (currentKnockoutFilter) {
-    slots = slots.filter(s => {
-        const local = s.local || '';
-        const visitor = s.visitor || '';
-        return local === currentKnockoutFilter || visitor === currentKnockoutFilter;
-    });
-}
+        if (currentKnockoutFilter) {
+            slots = slots.filter(s => {
+                const local = s.local || '';
+                const visitor = s.visitor || '';
+                return local === currentKnockoutFilter || visitor === currentKnockoutFilter;
+            });
+        }
         if (slots.length === 0) continue;
         html += `<div class="knockout-round"><h3>${round}</h3>`;
         for (let slot of slots) {
@@ -1129,20 +1187,17 @@ if (currentKnockoutFilter) {
             if (slot.status === 'LIVE') cardClass = 'live';
             else if (slot.status === 'FINISHED') cardClass = 'finished';
 
-            // ===== NUEVA LÓGICA PARA MOSTRAR PLACEHOLDERS OFICIALES =====
-            const desc = slot.slot || '';                         // ej. "A2 vs B2", "Ganador KO-0 vs Ganador KO-2"
-            const descParts = desc.split(' vs ');                 // separar local y visitante
+            const desc = slot.slot || '';
+            const descParts = desc.split(' vs ');
 
             let localName, visitorName, localFlag, visitorFlag;
 
             if (slot.local) {
-                // Ya sabemos el equipo → nombre real + bandera
                 localName = slot.local;
                 localFlag = getFlagUrl(slot.local);
             } else {
-                // Usamos el placeholder de la izquierda (ej. "A2", "E1", "Ganador KO-0")
                 localName = descParts[0] ? descParts[0].trim() : '?';
-                localFlag = '';   // sin bandera
+                localFlag = '';
             }
 
             if (slot.visitor) {
@@ -1158,7 +1213,6 @@ if (currentKnockoutFilter) {
             const safeLocalAttr = escapeAttr(localName);
             const safeVisitorAttr = escapeAttr(visitorName);
 
-            // Marcador
             let scoreHTML = '';
             if (slot.status === 'FINISHED' && slot.homeScore !== null) {
                 scoreHTML = `
@@ -1178,7 +1232,6 @@ if (currentKnockoutFilter) {
                 scoreHTML = `<div class="score-box"><span style="font-size:1rem; color:#ffb347;">vs</span></div>`;
             }
 
-            // Badge de estado
             let statusBadge = '';
             if (slot.status === 'LIVE') {
                 statusBadge = '<span class="status-badge live">🔴 En juego</span>';
@@ -1190,8 +1243,9 @@ if (currentKnockoutFilter) {
 
             const stadiumText = slot.stadium && slot.stadium !== 'Por definir' ? slot.stadium : '';
 
-                     html += `
-            <div class="match-card ${cardClass}">
+            // ⚡ Agregamos data-match-id y cursor pointer
+            html += `
+            <div class="match-card ${cardClass}" data-match-id="${escapeAttr(slot.id)}" style="cursor:pointer;">
                 <div class="match-header">
                     <div class="match-date">📅 ${escapeHTML(formatDateTime(slot.date))}</div>
                     ${statusBadge}
@@ -1236,6 +1290,15 @@ if (currentKnockoutFilter) {
     }
 
     container.innerHTML = html;
+
+    // ⚡ Agregar evento de clic para ver eventos del partido en eliminatorias
+    document.querySelectorAll('.match-card[data-match-id]').forEach(card => {
+        card.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const matchId = this.getAttribute('data-match-id');
+            if (matchId) showMatchEvents(matchId);
+        });
+    });
 }
 
 
@@ -1278,6 +1341,128 @@ function renderUpcomingMatches() {
     html += '</div>';
     container.innerHTML = html;
 }
+
+
+
+
+
+// ==================== EVENTOS DEL PARTIDO (GOLES, TARJETAS, PENALES) ====================
+async function showMatchEvents(matchLocalId) {
+    const modal = document.getElementById('matchEventsModal');
+    const body = document.getElementById('matchEventsBody');
+    const title = document.getElementById('matchEventsTitle');
+
+    let match = currentMatches.find(m => m.id === matchLocalId);
+    if (!match) match = knockoutSlots.find(m => m.id === matchLocalId);
+    if (!match) return;
+
+    const localHome = match.homeTeam || match.local || '';
+    const localAway = match.awayTeam || match.visitor || '';
+    const matchDateStr = match.datetime || match.date;
+
+    title.textContent = `⚽ ${localHome} vs ${localAway}`;
+    body.innerHTML = '<div class="squad-loading">⏳ Buscando partido...</div>';
+    modal.classList.add('active');
+
+    let fixtureId = match.apiFootballFixtureId;
+
+    // Si no tenemos ID guardado, verificamos si el partido es de ayer o hoy
+    if (!fixtureId) {
+        const now = new Date();
+        const matchDate = new Date(matchDateStr);
+        const diffDays = Math.floor((now - matchDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 1) {
+            // Partido demasiado antiguo para la API gratuita
+            body.innerHTML = '<div class="squad-empty">📭 Los eventos de este partido ya no están disponibles (API gratuita solo cubre hasta 1 día atrás).</div>';
+            return;
+        }
+
+        // Intentar con la fecha del partido y la de ayer/hoy
+        const dates = [
+            matchDate.toISOString().slice(0, 10),
+            new Date(now).toISOString().slice(0, 10),
+            new Date(now.getTime() - 86400000).toISOString().slice(0, 10)
+        ];
+
+        let found = null;
+        for (const d of dates) {
+            const res = await apiFootballFetch(`/fixtures?date=${d}`);
+            const data = await res.json();
+            const fixtures = data.response || [];
+            found = fixtures.find(f => {
+                const home = TEAM_MAP_REVERSE[f.teams.home.name] || f.teams.home.name;
+                const away = TEAM_MAP_REVERSE[f.teams.away.name] || f.teams.away.name;
+                return home === localHome && away === localAway;
+            });
+            if (found) break;
+        }
+
+        if (!found) {
+            body.innerHTML = '<div class="squad-empty">⚠️ Partido no encontrado en la API (fecha fuera de cobertura).</div>';
+            return;
+        }
+
+        fixtureId = found.fixture.id;
+        match.apiFootballFixtureId = fixtureId;
+    }
+
+    // Obtener eventos
+    try {
+        const res = await apiFootballFetch(`/fixtures/events?fixture=${fixtureId}`);
+        const data = await res.json();
+        const events = data.response || [];
+
+        if (!events.length) {
+            body.innerHTML = '<div class="squad-empty">📭 No hay eventos registrados para este partido.</div>';
+            return;
+        }
+
+        let html = '';
+        for (const e of events) {
+            const minute = e.time.elapsed + (e.time.extra ? `+${e.time.extra}` : '');
+            const player = e.player?.name || 'Desconocido';
+            const team = TEAM_MAP_REVERSE[e.team?.name] || e.team?.name || '';
+            const assist = e.assist?.name ? ` (asist. ${e.assist.name})` : '';
+
+            if (e.type === 'Goal') {
+                const icon = e.detail === 'Penalty' ? '🥅' : '⚽';
+                html += `<div class="event-item">
+                    <span class="event-minute">${minute}'</span>
+                    <span class="event-icon">${icon}</span>
+                    <span class="event-detail">${player}${assist}</span>
+                    <span class="event-team">${team}</span>
+                </div>`;
+            } else if (e.type === 'Card') {
+                const icon = e.detail === 'Yellow Card' ? '🟨' : '🟥';
+                html += `<div class="event-item">
+                    <span class="event-minute">${minute}'</span>
+                    <span class="event-icon">${icon}</span>
+                    <span class="event-detail">${player}</span>
+                    <span class="event-team">${team}</span>
+                </div>`;
+            }
+        }
+
+        body.innerHTML = html || '<div class="squad-empty">📭 No hay eventos destacados.</div>';
+    } catch (e) {
+        console.error(e);
+        body.innerHTML = '<div class="squad-empty">⚠️ Error al cargar eventos.</div>';
+    }
+}
+
+
+
+
+
+// Cerrar modal
+function closeMatchEventsModal() {
+    document.getElementById('matchEventsModal').classList.remove('active');
+}
+document.getElementById('closeMatchEventsBtn').addEventListener('click', closeMatchEventsModal);
+document.getElementById('matchEventsModal').addEventListener('click', function(e) {
+    if (e.target === this) closeMatchEventsModal();
+});
 
 
 
@@ -1886,11 +2071,15 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
         if (useApiFootballForLive) {
             console.log("⏰ Fuera del horario de partidos, usando football-data.org.");
             useApiFootballForLive = false;
+            // ✅ TOAST DE CAMBIO DE FUENTE (fuera de horario)
+            showToast("⏰ Fuera del horario de partidos en vivo — usando football-data.org", "info", 5000);
         }
     } else {
         if (!useApiFootballForLive && apiFootballDailyCalls < 100) {
             console.log("⏰ En horario de partidos, reactivando API-Football.");
             useApiFootballForLive = true;
+            // ✅ TOAST DE REACTIVACIÓN
+            showToast("✅ API‑Football reactivada para partidos en vivo", "success", 5000);
         }
     }
     if (useApiFootballForLive && apiFootballDailyCalls < 100 && hayPartidosEnVivoAhora()) {
@@ -1909,10 +2098,14 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
             } else if (res.status === 429) {
                 console.warn("⚠️ API-Football: límite de peticiones alcanzado (429). Cambiando a respaldo.");
                 useApiFootballForLive = false;
+                // ✅ TOAST DE LÍMITE AGOTADO
+                showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
             }
         } catch(e) {
             console.error("❌ Error en API-Football:", e);
             useApiFootballForLive = false;
+            // ✅ TOAST DE ERROR EN API-FOOTBALL
+            showToast("❌ Error al consultar API‑Football, usando respaldo", "warning", 5000);
         }
     }
     console.log("🔄 Usando football-data.org para partidos En juego.");
@@ -1938,6 +2131,9 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
     return { source: 'fallback', data: [] };
 }
 
+
+
+
 async function updateLiveMatches(preloadedMatches = null) {
     const result = await fetchLiveWithFallback(preloadedMatches);
     if (!result.data || result.data.length === 0) return false;
@@ -1959,7 +2155,24 @@ async function updateLiveMatches(preloadedMatches = null) {
                 const newHome = apiMatch.goals.home;
                 const newAway = apiMatch.goals.away;
 
-                // ===== DETECCIÓN DE GOLES (CON MINUTO) =====
+                // 🟢 Inicio del partido
+                const wasScheduled = localMatch.status === 'SCHEDULED' || localMatch.status === 'HT';
+                const isNowLive = newStatus === 'LIVE' || newStatus === 'HT';
+                if (wasScheduled && isNowLive) {
+                    showToast(`🟢 ¡Comenzó ${localMatch.homeTeam} vs ${localMatch.awayTeam}!`, "info");
+                }
+
+                // ⏸️ Medio tiempo
+                if (st === "HT" && localMatch.status !== "HT") {
+                    showToast(`⏸️ Medio tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                }
+
+                // 🔄 Segundo tiempo (cuando pasa de HT a LIVE otra vez)
+                if (st === "2H" && localMatch.status === "HT") {
+                    showToast(`🔄 Segundo tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                }
+
+                // ⚽ Goles (con minuto)
                 const oldHome = localMatch.homeScore ?? 0;
                 const oldAway = localMatch.awayScore ?? 0;
                 if (newHome > oldHome) {
@@ -1969,7 +2182,11 @@ async function updateLiveMatches(preloadedMatches = null) {
                     showToast(`⚽ ¡Gol de ${localMatch.awayTeam}! (${elapsed}')`, "goal");
                 }
 
-                // ===== ACTUALIZACIÓN DE DATOS =====
+                // 🏁 Finalización
+                if ((st === "FT" || st === "AET" || st === "PEN") && localMatch.status !== "FINISHED") {
+                    showToast(`🏁 Finalizó ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`, "success");
+                }
+
                 if (newStatus !== localMatch.status ||
                     newHome !== localMatch.homeScore ||
                     newAway !== localMatch.awayScore ||
@@ -1997,7 +2214,24 @@ async function updateLiveMatches(preloadedMatches = null) {
                 let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
                 let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
 
-                // ===== DETECCIÓN DE GOLES (SIN MINUTO EXACTO) =====
+                // 🟢 Inicio del partido
+                const wasSched = localMatch.status === 'SCHEDULED' || localMatch.status === 'HT';
+                const nowLive = newStatus === 'LIVE' || newStatus === 'HT';
+                if (wasSched && nowLive) {
+                    showToast(`🟢 ¡Comenzó ${localMatch.homeTeam} vs ${localMatch.awayTeam}!`, "info");
+                }
+
+                // ⏸️ Medio tiempo
+                if (status === "HT" && localMatch.status !== "HT") {
+                    showToast(`⏸️ Medio tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                }
+
+                // 🔄 Segundo tiempo (cuando pasa de HT a LIVE)
+                if (status === "LIVE" && localMatch.status === "HT") {
+                    showToast(`🔄 Segundo tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                }
+
+                // ⚽ Goles (sin minuto)
                 const oldHome = localMatch.homeScore ?? 0;
                 const oldAway = localMatch.awayScore ?? 0;
                 if (newHome !== null && newHome > oldHome) {
@@ -2007,7 +2241,11 @@ async function updateLiveMatches(preloadedMatches = null) {
                     showToast(`⚽ ¡Gol de ${localMatch.awayTeam}!`, "goal");
                 }
 
-                // ===== ACTUALIZACIÓN DE DATOS =====
+                // 🏁 Finalización
+                if (newStatus === "FINISHED" && localMatch.status !== "FINISHED") {
+                    showToast(`🏁 Finalizó ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`, "success");
+                }
+
                 if (newStatus !== localMatch.status ||
                     newHome !== localMatch.homeScore ||
                     newAway !== localMatch.awayScore) {
@@ -2034,14 +2272,14 @@ async function updateFinishedMatches(apiMatchesList) {
                 const newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
                 const newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
 
-                // ⚡ Forzar FINISHED aunque el marcador ya sea correcto (evita el congelamiento en LIVE)
                 if (localMatch.status !== "FINISHED") {
                     localMatch.status = "FINISHED";
                     localMatch.elapsed = null;
                     anyUpdate = true;
+                    // 🏁 Toast de finalización (football‑data)
+                    showToast(`🏁 Finalizó ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`, "success");
                 }
 
-                // Actualizar marcadores si son distintos o faltan
                 if ((newHome !== null && newHome !== localMatch.homeScore) || 
                     (newAway !== null && newAway !== localMatch.awayScore)) {
                     if (newHome !== null) localMatch.homeScore = newHome;
@@ -2113,12 +2351,12 @@ async function fetchAllData() {
 
 
 
-      const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
-      if (allGroupFinished) {
-         fillKnockoutSlotsFromGroups();
-  }
+    const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
+    if (allGroupFinished) {
+       fillKnockoutSlotsFromGroups();
+ }
 		
-	// fillKnockoutSlotsFromGroups();
+	 fillKnockoutSlotsFromGroups();
 		
 		
 
