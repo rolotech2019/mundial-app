@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '9';
+    var VERSION = '9.1';
     var UPDATE_NOTES = '¡ INICIO DE FASE ELIMINATORIA !.. Se agregaron Avisos de gol en vivo, ver eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguiente fase se generan automaticamente.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -1188,19 +1188,50 @@ function updateSlotsFromApi(apiKnockoutMatches) {
 function renderKnockout() {
     const container = document.getElementById('knockoutContainer');
     if (!container) return;
+
+    // 1. Obtener todos los slots
+    let allSlots = knockoutSlots;
+
+    // 2. Aplicar filtro "Partidos de hoy"
+    if (currentKnockoutFilter === "__TODAY__") {
+        const today = new Date();
+        const todayBolivia = new Date(today.toLocaleString("en-US", { timeZone: TIMEZONE }));
+        const todayYear = todayBolivia.getFullYear();
+        const todayMonth = todayBolivia.getMonth();
+        const todayDay = todayBolivia.getDate();
+
+        allSlots = allSlots.filter(slot => {
+            const matchDate = new Date(slot.date);
+            return matchDate.getFullYear() === todayYear &&
+                   matchDate.getMonth() === todayMonth &&
+                   matchDate.getDate() === todayDay;
+        });
+    } 
+    // 3. Aplicar filtro por equipo (si no es "hoy")
+    else if (currentKnockoutFilter) {
+        allSlots = allSlots.filter(s => {
+            const local = s.local || '';
+            const visitor = s.visitor || '';
+            return local === currentKnockoutFilter || visitor === currentKnockoutFilter;
+        });
+    }
+
+    // 4. Si no hay partidos, mostrar mensaje
+    if (allSlots.length === 0) {
+        container.innerHTML = '<div class="empty-message">No hay partidos de eliminatorias con el filtro actual.</div>';
+        return;
+    }
+
+    // 5. Renderizar por rondas (igual que antes)
     const rounds = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinales", "Tercer puesto", "Final"];
     let html = '<div class="knockout-grid">';
+
     for (let round of rounds) {
-        let slots = knockoutSlots.filter(s => s.round === round);
-        if (currentKnockoutFilter) {
-            slots = slots.filter(s => {
-                const local = s.local || '';
-                const visitor = s.visitor || '';
-                return local === currentKnockoutFilter || visitor === currentKnockoutFilter;
-            });
-        }
+        let slots = allSlots.filter(s => s.round === round);
         if (slots.length === 0) continue;
+
         html += `<div class="knockout-round"><h3>${round}</h3>`;
+
         for (let slot of slots) {
             let cardClass = '';
             if (slot.status === 'LIVE') cardClass = 'live';
@@ -1262,7 +1293,6 @@ function renderKnockout() {
 
             const stadiumText = slot.stadium && slot.stadium !== 'Por definir' ? slot.stadium : '';
 
-            // ⚡ Agregamos data-match-id y cursor pointer
             html += `
             <div class="match-card ${cardClass}" data-match-id="${escapeAttr(slot.id)}" style="cursor:pointer;">
                 <div class="match-header">
@@ -1287,7 +1317,7 @@ function renderKnockout() {
     }
     html += '</div>';
 
-    // 🏆 Verificar si la final terminó y mostrar al campeón
+    // 🏆 Campeón (sin cambios)
     const finalSlot = knockoutSlots.find(s => s.round === 'Final');
     if (finalSlot && finalSlot.status === 'FINISHED' && finalSlot.homeScore !== null) {
         const champion = finalSlot.homeScore > finalSlot.awayScore ? finalSlot.local : finalSlot.visitor;
@@ -1310,7 +1340,7 @@ function renderKnockout() {
 
     container.innerHTML = html;
 
-    // ⚡ Agregar evento de clic para ver eventos del partido en eliminatorias
+    // Eventos de clic (sin cambios)
     document.querySelectorAll('.match-card[data-match-id]').forEach(card => {
         card.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1319,7 +1349,6 @@ function renderKnockout() {
         });
     });
 }
-
 
 
 
@@ -1817,7 +1846,6 @@ function populateKnockoutFilter() {
     if (!select) return;
 
     const teams = new Set();
-    // Recorremos todos los slots de eliminatorias que tengan equipos asignados
     knockoutSlots.forEach(slot => {
         if (slot.local && slot.local !== '?') teams.add(slot.local);
         if (slot.visitor && slot.visitor !== '?') teams.add(slot.visitor);
@@ -1825,6 +1853,8 @@ function populateKnockoutFilter() {
 
     const sorted = Array.from(teams).sort((a, b) => a.localeCompare(b));
     select.innerHTML = '';
+    // 📅 Nueva opción "Partidos de hoy"
+    select.appendChild(new Option("📅 Partidos de hoy", "__TODAY__"));
     select.appendChild(new Option("Todos los equipos", ""));
     sorted.forEach(team => select.appendChild(new Option(team, team)));
 
@@ -2579,6 +2609,8 @@ async function fetchAllData() {
     renderGroups(); 
     renderKnockout(); 
 	advanceKnockoutWinners();
+	fillKnockoutSlotsFromGroups();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
     renderResults(); 
     renderFixture(false); 
     populateTeamFilter();
