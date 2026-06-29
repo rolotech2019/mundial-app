@@ -1671,6 +1671,11 @@ let currentKnockoutFilter = "";
 function renderFixture(editMode = false) {
     const container = document.getElementById('fixtureContainer');
     if (!container) return;
+	
+	  // 🔄 Actualizar nombres de eliminatorias antes de renderizar
+    fillKnockoutSlotsFromGroups();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+	
     let allMatches = getAllMatches();
     if (currentFixtureFilter === "__TODAY__") {
         const today = new Date();
