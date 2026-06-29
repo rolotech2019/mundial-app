@@ -2603,7 +2603,7 @@ async function fetchAllData() {
         let shown = parseInt(localStorage.getItem(toastKey), 10) || 0;
 
         if (shown < 3) {
-            showToast(`🔄 v${version} – ${updateNotes}`, "info", 8000);
+            showToast(`🔄 v${version} – ${updateNotes}`, "info", 15000);
             shown++;
             localStorage.setItem(toastKey, shown);
         } else {
