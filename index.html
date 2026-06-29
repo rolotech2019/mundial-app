@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '9.1';
+    var VERSION = '9.2';
     var UPDATE_NOTES = '¡ INICIO DE FASE ELIMINATORIA !.. Se agregaron Avisos de gol en vivo, ver eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguiente fase se generan automaticamente.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -633,6 +633,15 @@ function apiFootballFetch(endpoint) {
     });
 }
 
+
+function normalize(str) {
+    if (!str) return '';
+    return str.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .trim();
+}
+
+
 let useApiFootballForLive = true;
 let apiFootballDailyCalls = 0;
 let lastApiFootballReset = Date.now();
@@ -857,26 +866,30 @@ if (Array.isArray(savedMatches)) {
     console.log("📀 Primera carga: fixture inicial guardado");
 }
 
+
+
+
 const savedSlots = readJSONStorage('worldcup2026_knockoutSlots');
 if (Array.isArray(savedSlots)) {
     knockoutSlots = savedSlots;
-    console.log("🏆 Slots de eliminatorias cargados de localStorage");
-
-    // ⚡ Actualizar los estadios con las sedes oficiales (sin borrar equipos/resultados)
     knockoutSlots.forEach(slot => {
-        // Buscar el slot original por ID para obtener el estadio confirmado
+        if (slot.elapsed === undefined) slot.elapsed = null;
+        // Actualizar estadios (sin tocar local/visitor)
         const original = OFFICIAL_KNOCKOUT_SLOTS.find(o => o.id === slot.id);
         if (original && original.stadium && original.stadium !== 'Por definir') {
             slot.stadium = original.stadium;
         }
+        // ⚠️ NO asignar local/visitor basado en slot.slot
     });
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 } else {
     knockoutSlots = cloneData(OFFICIAL_KNOCKOUT_SLOTS);
+    knockoutSlots.forEach(slot => {
+        slot.elapsed = null;
+        // Dejar local y visitor como null
+    });
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 }
-
-
 
 
 currentMatches.forEach(match => {
@@ -1186,6 +1199,11 @@ function updateSlotsFromApi(apiKnockoutMatches) {
 
 
 function renderKnockout() {
+
+   // ✅ Resolver ganadores antes de renderizar
+    advanceKnockoutWinners();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+
     const container = document.getElementById('knockoutContainer');
     if (!container) return;
 
@@ -1395,34 +1413,6 @@ function renderUpcomingMatches() {
 
 
 
-
-// ==================== CACHÉ DE EVENTOS POR PARTIDO ====================
-function getCachedEvents(fixtureId) {
-    const raw = localStorage.getItem('events_' + fixtureId);
-    if (!raw) return null;
-    try {
-        return JSON.parse(raw);
-    } catch(e) {
-        return null;
-    }
-}
-
-function setCachedEvents(fixtureId, events) {
-    try {
-        localStorage.setItem('events_' + fixtureId, JSON.stringify(events));
-    } catch(e) {
-        console.warn('No se pudo guardar eventos en caché');
-    }
-}
-
-
-
-
-
-
-
-
-
 // ==================== EVENTOS DEL PARTIDO (GOLES, TARJETAS, PENALES) ====================
 async function showMatchEvents(matchLocalId) {
     const modal = document.getElementById('matchEventsModal');
@@ -1450,12 +1440,10 @@ async function showMatchEvents(matchLocalId) {
         const diffDays = Math.floor((now - matchDate) / (1000 * 60 * 60 * 24));
 
         if (diffDays > 1) {
-            // Partido demasiado antiguo para la API gratuita
-            body.innerHTML = '<div class="squad-empty">📭 Los eventos de este partido ya no están disponibles.</div>';
+            body.innerHTML = '<div class="squad-empty">📭 Los eventos de este partido ya no están disponibles (API gratuita solo cubre hasta 1 día atrás).</div>';
             return;
         }
 
-        // Intentar con la fecha del partido y la de ayer/hoy
         const dates = [
             matchDate.toISOString().slice(0, 10),
             new Date(now).toISOString().slice(0, 10),
@@ -1466,6 +1454,17 @@ async function showMatchEvents(matchLocalId) {
         for (const d of dates) {
             const res = await apiFootballFetch(`/fixtures?date=${d}`);
             const data = await res.json();
+
+            // 🔥 DETECTAR LÍMITE EN EL CUERPO DE LA RESPUESTA (búsqueda de fixtureId)
+            if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
+                useApiFootballForLive = false;
+                apiFootballDailyCalls = 100;
+                document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+                showToast('⚠️ Límite de peticiones API-Football alcanzado.', 'warning', 6000);
+                body.innerHTML = '<div class="squad-empty">⚠️ Límite de peticiones alcanzado. No se pueden cargar eventos.</div>';
+                return;
+            }
+
             const fixtures = data.response || [];
             found = fixtures.find(f => {
                 const home = TEAM_MAP_REVERSE[f.teams.home.name] || f.teams.home.name;
@@ -1487,7 +1486,7 @@ async function showMatchEvents(matchLocalId) {
     // 🟢 1. Intentar cargar desde caché
     let events = getCachedEvents(fixtureId);
     if (events && events.length > 0) {
-        // Si ya tenemos eventos guardados, los mostramos inmediatamente
+        // Mostrar eventos desde caché...
         let html = '';
         for (const e of events) {
             const minute = e.time.elapsed + (e.time.extra ? `+${e.time.extra}` : '');
@@ -1517,10 +1516,21 @@ async function showMatchEvents(matchLocalId) {
         return;
     }
 
-    // 🔵 2. Obtener eventos desde la API (tu código original, sin cambios)
+    // 🔵 2. Obtener eventos desde la API
     try {
         const res = await apiFootballFetch(`/fixtures/events?fixture=${fixtureId}`);
         const data = await res.json();
+
+        // 🔥 DETECTAR LÍMITE EN EL CUERPO DE LA RESPUESTA (obtención de eventos)
+        if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
+            useApiFootballForLive = false;
+            apiFootballDailyCalls = 100;
+            document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+            showToast('⚠️ Límite de peticiones API-Football alcanzado.', 'warning', 6000);
+            body.innerHTML = '<div class="squad-empty">⚠️ Límite de peticiones alcanzado. No se pueden cargar eventos.</div>';
+            return;
+        }
+
         events = data.response || [];
 
         if (!events.length) {
@@ -1528,10 +1538,8 @@ async function showMatchEvents(matchLocalId) {
             return;
         }
 
-        // 🟡 3. Guardar en caché para futuros clics
         setCachedEvents(fixtureId, events);
 
-        // Mostrar los eventos (tu renderizado original)
         let html = '';
         for (const e of events) {
             const minute = e.time.elapsed + (e.time.extra ? `+${e.time.extra}` : '');
@@ -1565,6 +1573,24 @@ async function showMatchEvents(matchLocalId) {
     }
 }
 
+
+function getCachedEvents(fixtureId) {
+    const raw = localStorage.getItem('events_' + fixtureId);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch(e) {
+        return null;
+    }
+}
+
+function setCachedEvents(fixtureId, events) {
+    try {
+        localStorage.setItem('events_' + fixtureId, JSON.stringify(events));
+    } catch(e) {
+        console.warn('No se pudo guardar eventos en caché');
+    }
+}
 
 
 // Cerrar modal
@@ -1669,6 +1695,12 @@ let currentKnockoutFilter = "";
 
 
 function renderFixture(editMode = false) {
+
+
+ // ✅ Resolver ganadores antes de renderizar
+    advanceKnockoutWinners();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+
     const container = document.getElementById('fixtureContainer');
     if (!container) return;
 	
@@ -1883,6 +1915,7 @@ function populateKnockoutFilter() {
 
 // ==================== SISTEMA DE NOTIFICACIONES (TOASTS) ====================
 function showToast(message, type = 'info', duration = 4000) {
+console.log('📢 showToast llamado:', message, type); // 👈 LOG
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
@@ -1941,49 +1974,87 @@ function checkKnockoutPhaseChange() {
 
 
 // ==================== AVANCE AUTOMÁTICO DE GANADORES EN EL BRACKET ====================
+// ==================== AVANCE AUTOMÁTICO DE GANADORES EN EL BRACKET ====================
 function advanceKnockoutWinners() {
+    console.log("🔄 Iniciando propagación de ganadores...");
     let changed = false;
 
-    knockoutSlots.forEach(slot => {
-        // Revisar si "local" es un placeholder tipo "Ganador KO-..." o "Perdedor KO-..."
-        const resolve = (teamExpr) => {
-            if (!teamExpr) return null;
-            const prefix = teamExpr.startsWith('Ganador') ? 'Ganador' : (teamExpr.startsWith('Perdedor') ? 'Perdedor' : null);
-            if (!prefix) return null;
-            const prevId = teamExpr.replace(prefix + ' ', '').trim();
-            const prevSlot = knockoutSlots.find(s => s.id === prevId);
-            if (prevSlot && prevSlot.status === 'FINISHED' && prevSlot.homeScore !== null) {
-                const winner = prefix === 'Perdedor'
-                    ? (prevSlot.homeScore > prevSlot.awayScore ? prevSlot.visitor : prevSlot.local)
-                    : (prevSlot.homeScore > prevSlot.awayScore ? prevSlot.local : prevSlot.visitor);
-                return winner;
-            }
-            return null;
-        };
+    // Recorremos todos los slots
+    for (let slot of knockoutSlots) {
+        // Verificar si el slot tiene placeholders en su slot.slot (ej. "Ganador KO-0 vs Ganador KO-2")
+        const parts = (slot.slot || '').split(' vs ');
+        if (parts.length !== 2) continue;
 
-        if (slot.local === null || slot.local === '' || (slot.local.startsWith('Ganador') || slot.local.startsWith('Perdedor'))) {
-            const winner = resolve(slot.local);
-            if (winner) {
-                slot.local = winner;
+        const localPlaceholder = parts[0].trim();
+        const visitorPlaceholder = parts[1].trim();
+
+        // Resolver local
+        if (localPlaceholder.startsWith('Ganador') || localPlaceholder.startsWith('Perdedor')) {
+            const resolved = resolveFromPlaceholder(localPlaceholder);
+            if (resolved && resolved !== slot.local) {
+                console.log(`🔁 Resuelto local en ${slot.id}: ${slot.local} → ${resolved}`);
+                slot.local = resolved;
                 changed = true;
             }
         }
-        if (slot.visitor === null || slot.visitor === '' || (slot.visitor.startsWith('Ganador') || slot.visitor.startsWith('Perdedor'))) {
-            const winner = resolve(slot.visitor);
-            if (winner) {
-                slot.visitor = winner;
+
+        // Resolver visitor
+        if (visitorPlaceholder.startsWith('Ganador') || visitorPlaceholder.startsWith('Perdedor')) {
+            const resolved = resolveFromPlaceholder(visitorPlaceholder);
+            if (resolved && resolved !== slot.visitor) {
+                console.log(`🔁 Resuelto visitor en ${slot.id}: ${slot.visitor} → ${resolved}`);
+                slot.visitor = resolved;
                 changed = true;
             }
         }
-    });
+    }
 
     if (changed) {
         saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        console.log('✅ Ganadores avanzados en el bracket');
+    } else {
+        console.log('ℹ️ No se detectaron cambios en el bracket');
     }
 }
 
+// Función que resuelve un placeholder tipo "Ganador KO-X" o "Perdedor KO-X"
+function resolveFromPlaceholder(placeholder) {
+    if (!placeholder) return null;
+    if (!placeholder.startsWith('Ganador') && !placeholder.startsWith('Perdedor')) {
+        // Si ya es un nombre real, devolverlo
+        return placeholder;
+    }
 
+    const prefix = placeholder.startsWith('Ganador') ? 'Ganador' : 'Perdedor';
+    const prevId = placeholder.replace(prefix + ' ', '').trim();
+    console.log(`🔎 Buscando slot anterior con ID: ${prevId}`);
+    const prevSlot = knockoutSlots.find(s => s.id === prevId);
+    if (!prevSlot) {
+        console.warn(`⚠️ No se encontró slot con ID: ${prevId}`);
+        return null;
+    }
+    console.log(`📊 Estado del slot ${prevId}: status=${prevSlot.status}, home=${prevSlot.homeScore}, away=${prevSlot.awayScore}, local=${prevSlot.local}, visitor=${prevSlot.visitor}`);
 
+    if (prevSlot.status !== 'FINISHED' || prevSlot.homeScore === null) {
+        console.log(`⏳ Partido ${prevId} aún no finalizado`);
+        return null;
+    }
+
+    let winner = null;
+    if (prefix === 'Ganador') {
+        winner = prevSlot.homeScore > prevSlot.awayScore ? prevSlot.local : prevSlot.visitor;
+    } else {
+        winner = prevSlot.homeScore > prevSlot.awayScore ? prevSlot.visitor : prevSlot.local;
+    }
+
+    if (!winner || winner === '?' || winner === '') {
+        console.warn(`⚠️ No se pudo determinar ${prefix} del partido ${prevId}`);
+        return null;
+    }
+
+    console.log(`✅ Resuelto ${prefix} de ${prevId}: ${winner}`);
+    return winner;
+}
 
 
 
@@ -2272,6 +2343,8 @@ function hayPartidosEnVivoAhora() {
     return horaDecimal >= 12.0 || horaDecimal < 2.0;
 }
 
+
+
 async function fetchLiveWithFallback(preloadedMatches = null) {
     const now = Date.now();
     if (now - lastApiFootballReset > 24 * 60 * 60 * 1000) {
@@ -2279,47 +2352,71 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
         lastApiFootballReset = now;
         useApiFootballForLive = true;
     }
+
     if (!hayPartidosEnVivoAhora()) {
         if (useApiFootballForLive) {
             console.log("⏰ Fuera del horario de partidos, usando football-data.org.");
             useApiFootballForLive = false;
-            // ✅ TOAST DE CAMBIO DE FUENTE (fuera de horario)
             showToast("⏰ Fuera del horario de partidos en vivo — usando football-data.org", "info", 5000);
+            document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
         }
     } else {
         if (!useApiFootballForLive && apiFootballDailyCalls < 100) {
             console.log("⏰ En horario de partidos, reactivando API-Football.");
             useApiFootballForLive = true;
-            // ✅ TOAST DE REACTIVACIÓN
             showToast("✅ API‑Football reactivada para partidos en vivo", "success", 5000);
+            document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (API-Football)`;
         }
     }
+
     if (useApiFootballForLive && apiFootballDailyCalls < 100 && hayPartidosEnVivoAhora()) {
         try {
             const res = await apiFootballFetch('/fixtures?live=all');
+            console.log(`📡 Código de estado: ${res.status} ${res.statusText}`);
+            console.log('📋 Headers:', [...res.headers.entries()]);
+
             if (res.ok) {
-                apiFootballDailyCalls++;
                 const data = await res.json();
-                if (data.response && data.response.length) {
+                
+                // 🔥 DETECTAR LÍMITE EN EL CUERPO DE LA RESPUESTA
+                if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
+                    console.warn("⚠️ API-Football: límite de peticiones alcanzado (detectado en errors.requests). Cambiando a respaldo.");
+                    useApiFootballForLive = false;
+                    apiFootballDailyCalls = 100;
+                    showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
+                    document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+                    // No retornamos, seguimos al fallback
+                } else if (data.response && data.response.length) {
+                    apiFootballDailyCalls++;
                     const worldCupMatches = data.response.filter(m => m.league.id === 1);
                     if (worldCupMatches.length) {
                         console.log(`✅ API-Football: datos En juego obtenidos (llamada #${apiFootballDailyCalls}/100)`);
                         return { source: 'api-football', data: worldCupMatches };
                     }
+                } else {
+                    console.log("ℹ️ API-Football: respuesta sin partidos en vivo. Usando football-data.org.");
+                    useApiFootballForLive = false;
                 }
             } else if (res.status === 429) {
                 console.warn("⚠️ API-Football: límite de peticiones alcanzado (429). Cambiando a respaldo.");
                 useApiFootballForLive = false;
-                // ✅ TOAST DE LÍMITE AGOTADO
+                apiFootballDailyCalls = 100;
                 showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
+                document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+            } else {
+                console.warn(`⚠️ API-Football: error ${res.status}, cambiando a respaldo.`);
+                useApiFootballForLive = false;
+                showToast(`⚠️ Error en API-Football (${res.status}), usando respaldo`, "warning", 5000);
+                document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
             }
         } catch(e) {
             console.error("❌ Error en API-Football:", e);
             useApiFootballForLive = false;
-            // ✅ TOAST DE ERROR EN API-FOOTBALL
             showToast("❌ Error al consultar API‑Football, usando respaldo", "warning", 5000);
+            document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
         }
     }
+
     console.log("🔄 Usando football-data.org para partidos En juego.");
     if (Array.isArray(preloadedMatches)) {
         const liveMatches = preloadedMatches.filter(m =>
@@ -2339,9 +2436,13 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
             console.log(`📋 football-data.org: ${liveMatches.length} partidos En juego/HT.`);
             return { source: 'football-data', data: liveMatches };
         }
-    } catch(e) {}
+    } catch(e) {
+        console.warn("Error en football-data.org:", e);
+    }
     return { source: 'fallback', data: [] };
 }
+
+
 
 
 
@@ -2350,13 +2451,41 @@ async function updateLiveMatches(preloadedMatches = null) {
     const result = await fetchLiveWithFallback(preloadedMatches);
     if (!result.data || result.data.length === 0) return false;
     let anyUpdate = false;
+    let anyKnockoutUpdate = false;
+
+    // 🔥 Función para normalizar nombres (quitar acentos, minúsculas)
+    const normalize = (str) => {
+        if (!str) return '';
+        return str.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    };
 
     if (result.source === 'api-football') {
         for (let apiMatch of result.data) {
-            const homeSp = TEAM_MAP_REVERSE[apiMatch.teams.home.name];
-            const awaySp = TEAM_MAP_REVERSE[apiMatch.teams.away.name];
-            const localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            const homeSp = TEAM_MAP_REVERSE[apiMatch.teams.home.name] || apiMatch.teams.home.name;
+            const awaySp = TEAM_MAP_REVERSE[apiMatch.teams.away.name] || apiMatch.teams.away.name;
+            
+            let localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            let isKnockout = false;
+            
+            // 🔥 Si no está en fase de grupos, buscar en eliminatorias con comparación flexible
+            if (!localMatch) {
+                localMatch = knockoutSlots.find(s => {
+                    if (!s.local || !s.visitor) return false;
+                    return normalize(s.local) === normalize(homeSp) &&
+                           normalize(s.visitor) === normalize(awaySp);
+                });
+                if (localMatch) {
+                    isKnockout = true;
+                    console.log(`✅ [API-Football] Encontrado en eliminatorias: ${homeSp} vs ${awaySp} → ${localMatch.local} vs ${localMatch.visitor}`);
+                } else {
+                    console.warn(`❌ [API-Football] NO encontrado: ${homeSp} vs ${awaySp}`);
+                }
+            }
+            
             if (localMatch) {
+                // --- PROCESAR ACTUALIZACIÓN ---
                 const st = apiMatch.fixture.status.short;
                 const elapsed = apiMatch.fixture.status.elapsed;
                 let newStatus = localMatch.status;
@@ -2364,58 +2493,88 @@ async function updateLiveMatches(preloadedMatches = null) {
                 else if (st === "HT") newStatus = "HT";
                 else if (st === "LIVE" || st === "1H" || st === "2H") newStatus = "LIVE";
                 else newStatus = "SCHEDULED";
+                
                 const newHome = apiMatch.goals.home;
                 const newAway = apiMatch.goals.away;
 
-                // 🟢 Inicio del partido
                 const wasScheduled = localMatch.status === 'SCHEDULED' || localMatch.status === 'HT';
                 const isNowLive = newStatus === 'LIVE' || newStatus === 'HT';
+                
+                // --- TOASTS ---
                 if (wasScheduled && isNowLive) {
-                    showToast(`🟢 ¡Comenzó ${localMatch.homeTeam} vs ${localMatch.awayTeam}!`, "info");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`🟢 ¡Comenzó ${homeName} vs ${awayName}!`, "info");
                 }
-
-                // ⏸️ Medio tiempo
                 if (st === "HT" && localMatch.status !== "HT") {
-                    showToast(`⏸️ Medio tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`⏸️ Medio tiempo en ${homeName} vs ${awayName}`, "info");
                 }
-
-                // 🔄 Segundo tiempo (cuando pasa de HT a LIVE otra vez)
                 if (st === "2H" && localMatch.status === "HT") {
-                    showToast(`🔄 Segundo tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`🔄 Segundo tiempo en ${homeName} vs ${awayName}`, "info");
                 }
 
-                // ⚽ Goles (con minuto)
                 const oldHome = localMatch.homeScore ?? 0;
                 const oldAway = localMatch.awayScore ?? 0;
                 if (newHome > oldHome) {
-                    showToast(`⚽ ¡Gol de ${localMatch.homeTeam}! (${elapsed}')`, "goal");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    showToast(`⚽ ¡Gol de ${homeName}! (${elapsed || '?'}')`, "goal");
                 }
                 if (newAway > oldAway) {
-                    showToast(`⚽ ¡Gol de ${localMatch.awayTeam}! (${elapsed}')`, "goal");
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`⚽ ¡Gol de ${awayName}! (${elapsed || '?'}')`, "goal");
                 }
 
-                // 🏁 Finalización
                 if ((st === "FT" || st === "AET" || st === "PEN") && localMatch.status !== "FINISHED") {
-                    showToast(`🏁 Finalizó ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`, "success");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`🏁 Finalizó ${homeName} ${newHome} - ${newAway} ${awayName}`, "success");
+                }
+
+                let newElapsed = null;
+                if (newStatus === 'LIVE' || newStatus === 'HT') {
+                    newElapsed = elapsed || null;
                 }
 
                 if (newStatus !== localMatch.status ||
                     newHome !== localMatch.homeScore ||
                     newAway !== localMatch.awayScore ||
-                    elapsed !== localMatch.elapsed) {
+                    newElapsed !== localMatch.elapsed) {
                     localMatch.status = newStatus;
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
-                    localMatch.elapsed = elapsed;
+                    localMatch.elapsed = newElapsed;
                     anyUpdate = true;
+                    if (isKnockout) anyKnockoutUpdate = true;
                 }
             }
         }
     } else {
+        // football-data.org
         for (let apiMatch of result.data) {
-            const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
-            const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
-            const localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name] || apiMatch.homeTeam.name;
+            const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name] || apiMatch.awayTeam.name;
+            
+            let localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            let isKnockout = false;
+            
+            if (!localMatch) {
+                localMatch = knockoutSlots.find(s => {
+                    if (!s.local || !s.visitor) return false;
+                    return normalize(s.local) === normalize(homeSp) &&
+                           normalize(s.visitor) === normalize(awaySp);
+                });
+                if (localMatch) {
+                    isKnockout = true;
+                    console.log(`✅ [football-data] Encontrado en eliminatorias: ${homeSp} vs ${awaySp} → ${localMatch.local} vs ${localMatch.visitor}`);
+                } else {
+                    console.warn(`❌ [football-data] NO encontrado: ${homeSp} vs ${awaySp}`);
+                }
+            }
+
             if (localMatch) {
                 const status = apiMatch.status;
                 let newStatus = localMatch.status;
@@ -2423,39 +2582,38 @@ async function updateLiveMatches(preloadedMatches = null) {
                 else if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED") newStatus = "LIVE";
                 else if (status === "HT") newStatus = "HT";
                 else newStatus = "SCHEDULED";
+                
                 let newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
                 let newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
 
-                // 🟢 Inicio del partido
                 const wasSched = localMatch.status === 'SCHEDULED' || localMatch.status === 'HT';
                 const nowLive = newStatus === 'LIVE' || newStatus === 'HT';
                 if (wasSched && nowLive) {
-                    showToast(`🟢 ¡Comenzó ${localMatch.homeTeam} vs ${localMatch.awayTeam}!`, "info");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`🟢 ¡Comenzó ${homeName} vs ${awayName}!`, "info");
                 }
-
-                // ⏸️ Medio tiempo
                 if (status === "HT" && localMatch.status !== "HT") {
-                    showToast(`⏸️ Medio tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`⏸️ Medio tiempo en ${homeName} vs ${awayName}`, "info");
                 }
 
-                // 🔄 Segundo tiempo (cuando pasa de HT a LIVE)
-                if (status === "LIVE" && localMatch.status === "HT") {
-                    showToast(`🔄 Segundo tiempo en ${localMatch.homeTeam} vs ${localMatch.awayTeam}`, "info");
-                }
-
-                // ⚽ Goles (sin minuto)
                 const oldHome = localMatch.homeScore ?? 0;
                 const oldAway = localMatch.awayScore ?? 0;
                 if (newHome !== null && newHome > oldHome) {
-                    showToast(`⚽ ¡Gol de ${localMatch.homeTeam}!`, "goal");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    showToast(`⚽ ¡Gol de ${homeName}!`, "goal");
                 }
                 if (newAway !== null && newAway > oldAway) {
-                    showToast(`⚽ ¡Gol de ${localMatch.awayTeam}!`, "goal");
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`⚽ ¡Gol de ${awayName}!`, "goal");
                 }
 
-                // 🏁 Finalización
                 if (newStatus === "FINISHED" && localMatch.status !== "FINISHED") {
-                    showToast(`🏁 Finalizó ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`, "success");
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`🏁 Finalizó ${homeName} ${newHome} - ${newAway} ${awayName}`, "success");
                 }
 
                 if (newStatus !== localMatch.status ||
@@ -2464,45 +2622,102 @@ async function updateLiveMatches(preloadedMatches = null) {
                     localMatch.status = newStatus;
                     localMatch.homeScore = newHome;
                     localMatch.awayScore = newAway;
-                    localMatch.elapsed = null;
+                    if (newStatus === 'FINISHED') localMatch.elapsed = null;
                     anyUpdate = true;
+                    if (isKnockout) anyKnockoutUpdate = true;
                 }
             }
         }
     }
+
+    if (anyUpdate) {
+        saveJSONStorage('worldcup2026_matches', currentMatches);
+        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        if (anyKnockoutUpdate) {
+            advanceKnockoutWinners();
+            saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        }
+    }
+
     return anyUpdate;
 }
 
+
+
+
+
+
 async function updateFinishedMatches(apiMatchesList) {
     let anyUpdate = false;
+    let anyKnockoutUpdate = false;
+
     for (let apiMatch of apiMatchesList) {
         if (apiMatch.status === "FINISHED") {
-            const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
-            const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
-            const localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name] || apiMatch.homeTeam.name;
+            const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name] || apiMatch.awayTeam.name;
+            
+            let localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            let isKnockout = false;
+            
+            if (!localMatch) {
+                // Búsqueda flexible en eliminatorias
+                localMatch = knockoutSlots.find(s => {
+                    if (!s.local || !s.visitor) return false;
+                    return normalize(s.local) === normalize(homeSp) &&
+                           normalize(s.visitor) === normalize(awaySp);
+                });
+                if (localMatch) {
+                    isKnockout = true;
+                    console.log(`✅ [finished] Encontrado en eliminatorias: ${homeSp} vs ${awaySp}`);
+                } else {
+                    console.warn(`❌ [finished] NO encontrado: ${homeSp} vs ${awaySp}`);
+                }
+            }
+            
             if (localMatch) {
                 const newHome = apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home ?? null;
                 const newAway = apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away ?? null;
 
-                if (localMatch.status !== "FINISHED") {
+                const oldStatus = localMatch.status;
+                const oldHome = localMatch.homeScore;
+                const oldAway = localMatch.awayScore;
+
+                if (oldStatus !== "FINISHED") {
                     localMatch.status = "FINISHED";
                     localMatch.elapsed = null;
                     anyUpdate = true;
-                    // 🏁 Toast de finalización (football‑data)
-                    showToast(`🏁 Finalizó ${localMatch.homeTeam} ${newHome} - ${newAway} ${localMatch.awayTeam}`, "success");
+                    if (isKnockout) anyKnockoutUpdate = true;
+                    
+                    const homeName = localMatch.homeTeam || localMatch.local;
+                    const awayName = localMatch.awayTeam || localMatch.visitor;
+                    showToast(`🏁 Finalizó ${homeName} ${newHome} - ${newAway} ${awayName}`, "success");
                 }
 
-                if ((newHome !== null && newHome !== localMatch.homeScore) || 
-                    (newAway !== null && newAway !== localMatch.awayScore)) {
+                if ((newHome !== null && newHome !== oldHome) || 
+                    (newAway !== null && newAway !== oldAway)) {
                     if (newHome !== null) localMatch.homeScore = newHome;
                     if (newAway !== null) localMatch.awayScore = newAway;
                     anyUpdate = true;
+                    if (isKnockout) anyKnockoutUpdate = true;
                 }
             }
         }
     }
+
+    if (anyUpdate) {
+        saveJSONStorage('worldcup2026_matches', currentMatches);
+        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        if (anyKnockoutUpdate) {
+            advanceKnockoutWinners();
+            saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        }
+    }
+
     return anyUpdate;
 }
+
+
+
 
 
   (function() {
@@ -2581,6 +2796,17 @@ async function fetchAllData() {
             saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
             localStorage.setItem('worldcup2026_matches_ts', Date.now().toString());
         }
+		
+		
+		 // Después de guardar todos los cambios
+    if (anyUpdate) {
+        saveJSONStorage('worldcup2026_matches', currentMatches);
+        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        advanceKnockoutWinners();        // ✅ Propagar ganadores
+        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+    }
+		
+		
         renderGroups(); 
         renderKnockout();
 		advanceKnockoutWinners();
@@ -2613,7 +2839,9 @@ async function fetchAllData() {
     await fetchTeamIds();
     renderGroups(); 
     renderKnockout(); 
-	advanceKnockoutWinners();
+	 // ✅ Resolver ganadores desde el inicio
+    advanceKnockoutWinners();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 	fillKnockoutSlotsFromGroups();
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
     renderResults(); 
@@ -2702,34 +2930,75 @@ if (editBtn && saveBtn) {
         editBtn.textContent = fixtureEditMode ? '↩️ Cancelar edición' : '✏️ Editar resultados';
         saveBtn.style.display = fixtureEditMode ? 'inline-block' : 'none';
     });
+	
+	
     saveBtn.addEventListener('click', () => {
-        const parseScore = value => {
-            if (value === '') return null;
-            const parsed = Number.parseInt(value, 10);
-            return Number.isFinite(parsed) && parsed >= 0 ? Math.min(parsed, 99) : null;
-        };
-        document.querySelectorAll('#fixtureContainer tr[data-id]').forEach(row => {
-            const id = row.dataset.id;
-            const homeInp = row.querySelector('.home-score'), awayInp = row.querySelector('.away-score');
-            if (homeInp && awayInp) {
-                const hs = parseScore(homeInp.value);
-                const as = parseScore(awayInp.value);
-                let match = currentMatches.find(m => m.id === id) || knockoutSlots.find(m => m.id === id);
-                if (match) {
-                    match.homeScore = hs;
-                    match.awayScore = as;
-                    match.status = (hs !== null && as !== null) ? "FINISHED" : "SCHEDULED";
+    const parseScore = value => {
+        if (value === '') return null;
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) && parsed >= 0 ? Math.min(parsed, 99) : null;
+    };
+
+    let anyKnockoutUpdate = false;  // 👈 bandera para detectar cambios en eliminatorias
+
+    document.querySelectorAll('#fixtureContainer tr[data-id]').forEach(row => {
+        const id = row.dataset.id;
+        const homeInp = row.querySelector('.home-score');
+        const awayInp = row.querySelector('.away-score');
+        if (homeInp && awayInp) {
+            const hs = parseScore(homeInp.value);
+            const as = parseScore(awayInp.value);
+            
+            // Buscar el partido (primero en grupos, luego en eliminatorias)
+            let match = currentMatches.find(m => m.id === id);
+            let isKnockout = false;
+            if (!match) {
+                match = knockoutSlots.find(m => m.id === id);
+                if (match) isKnockout = true;
+            }
+
+            if (match) {
+                const oldStatus = match.status;
+                const oldHome = match.homeScore;
+                const oldAway = match.awayScore;
+
+                // Actualizar datos
+                match.homeScore = hs;
+                match.awayScore = as;
+                match.status = (hs !== null && as !== null) ? "FINISHED" : "SCHEDULED";
+
+                // Detectar si hubo cambios en este partido
+                if (oldStatus !== match.status || oldHome !== hs || oldAway !== as) {
+                    if (isKnockout) anyKnockoutUpdate = true;
                 }
             }
-        });
-        saveJSONStorage('worldcup2026_matches', currentMatches);
-        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-        renderGroups(); renderKnockout(); renderResults();
-        fixtureEditMode = false;
-        renderFixture(false);
-        editBtn.textContent = '✏️ Editar resultados';
-        saveBtn.style.display = 'none';
+        }
     });
+
+    // Guardar cambios
+    saveJSONStorage('worldcup2026_matches', currentMatches);
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+
+    // 🔄 Si se editó algún partido de eliminatorias, propagar ganadores
+    if (anyKnockoutUpdate) {
+        advanceKnockoutWinners();        // Resuelve placeholders (Ganador KO-X, Perdedor KO-X)
+        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+    }
+
+    // Re-renderizar
+    renderGroups();
+    renderKnockout();
+    renderResults();
+
+    // Salir del modo edición
+    fixtureEditMode = false;
+    renderFixture(false);
+    editBtn.textContent = '✏️ Editar resultados';
+    saveBtn.style.display = 'none';
+
+    // Notificación opcional
+    showToast('✅ Resultados guardados correctamente', 'success', 3000);
+});
 }
 
 
