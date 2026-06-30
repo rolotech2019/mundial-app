@@ -3,8 +3,8 @@
 <head>
 <script>
   (function() {
-    var VERSION = '9.2';
-    var UPDATE_NOTES = '¡ INICIO DE FASE ELIMINATORIA !.. Se agregaron Avisos de gol en vivo, ver eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguiente fase se generan automaticamente.';
+    var VERSION = '9.3';
+    var UPDATE_NOTES = '¡ FASE ELIMINATORIA !.. Se agregaron Avisos de gol en vivo, ver eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
 
@@ -168,13 +168,13 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 .team:last-child { justify-content: flex-end; }
 .team img { width: 28px; height: 20px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
 .team-name { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 600px) { .team-name { font-size: 0.90rem; white-space: normal; } .team img { width: 24px; height: 18px; } }
+@media (max-width: 600px) { .team-name { font-size: 1.1rem; white-space: normal; } .team img { width: 24px; height: 18px; } }
 .score { font-weight: bold; background: #1e2a32; padding: 4px 12px; border-radius: 20px; min-width: 65px; text-align: center; font-size: 1rem; flex-shrink: 0; }
 .match-info { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.7rem; color: #f7f7f7; gap: 8px; flex-wrap: wrap; }
 .status-badge { background: #2c5a6e; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; }
 .status-badge.live { background: #D50032; animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-.data-container { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-radius: 20px; padding: 18px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+.data-container { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-radius: 20px; padding: 1px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
 .data-table td, #fixtureContainer table td, #scorersContainer table td { border-bottom: 1px solid rgba(255,255,255,0.15); }
 .data-table th, #fixtureContainer table th, #scorersContainer table th { border-bottom: 2px solid rgba(0,181,216,0.5); }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
@@ -999,11 +999,15 @@ function renderGroups() {
             return m.homeTeam === currentGroupFilter || m.awayTeam === currentGroupFilter;
         });
     }
+
     let html = '';
     let groupOrder = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+    let hasMatches = false;
+
     for (let gl of groupOrder) {
         let matches = matchesToRender.filter(m => m.group === gl);
         if (matches.length === 0) continue;
+        hasMatches = true;
         let teams = GROUP_TEAMS[gl];
         html += `<div class="group-card"><div class="group-header">Grupo ${escapeHTML(gl)}</div><div class="teams-list">${teams.map(t => `<div class="team-badge" data-team="${escapeAttr(t)}"><img src="${escapeAttr(getFlagUrl(t))}" alt="" loading="lazy"><span>${escapeHTML(getTeamCode(t))}</span></div>`).join('')}</div><div class="matches-list">`;
         for (let m of matches) {
@@ -1022,12 +1026,19 @@ function renderGroups() {
                 statusText = "✅ Finalizado";
                 scoreDisplay = `${m.homeScore} - ${m.awayScore}`;
             }
-            // Se agregó data-match-id y cursor pointer
             html += `<div class="match-item" data-match-id="${escapeAttr(m.id)}" style="cursor:pointer;"><div class="match-teams"><div class="team"><img src="${escapeAttr(getFlagUrl(m.homeTeam))}" alt="" loading="lazy"><span class="team-name">${escapeHTML(m.homeTeam)}</span></div><div class="score">${escapeHTML(scoreDisplay)}</div><div class="team"><span class="team-name">${escapeHTML(m.awayTeam)}</span><img src="${escapeAttr(getFlagUrl(m.awayTeam))}" alt="" loading="lazy"></div></div><div class="match-info"><span>🏟️ ${escapeHTML(m.stadium)}</span><span>⏰ ${escapeHTML(formatDateTime(m.datetime))}</span><span class="status-badge ${escapeAttr(statusClass)}">${escapeHTML(statusText)}</span></div></div>`;
         }
         html += `</div></div>`;
     }
-    container.innerHTML = html;
+
+    // Si no hay partidos, mostrar el mismo mensaje estilizado que en Resultados
+    if (!hasMatches) {
+        container.innerHTML = `<div class="data-container"><div class="empty-message">No se encontraron partidos con el filtro actual.</div></div>`;
+    } else {
+        container.innerHTML = html;
+    }
+
+    // Eventos de clic (sin cambios)
     document.querySelectorAll('.team-badge').forEach(badge => {
         badge.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1036,7 +1047,6 @@ function renderGroups() {
         });
     });
 
-    // Nuevo: clic en partido para ver eventos
     document.querySelectorAll('.match-item[data-match-id]').forEach(item => {
         item.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -1045,6 +1055,10 @@ function renderGroups() {
         });
     });
 }
+
+
+
+
 
 // ==================== CÁLCULO DE ESTADÍSTICAS ====================
 function calculateGroupStats(matches) {
@@ -1370,7 +1384,21 @@ function renderKnockout() {
 
 
 
+
+// Próximos partidos
+
 function renderUpcomingMatches() {
+
+
+
+
+  renderKnockout(); 
+	 // ✅ Resolver ganadores desde el inicio
+    advanceKnockoutWinners();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+	fillKnockoutSlotsFromGroups();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+
     const container = document.getElementById('upcomingContainer');
     if (!container) return;
 
@@ -1390,8 +1418,8 @@ function renderUpcomingMatches() {
         const visitor = m.away || m.awayTeam;
 
         // Acortar nombres largos (opcional)
-        const shortLocal = local.length > 12 ? local.substring(0,10)+'…' : local;
-        const shortVisitor = visitor.length > 12 ? visitor.substring(0,10)+'…' : visitor;
+        const shortLocal = local.length > 14 ? local.substring(0,10)+'…' : local;
+        const shortVisitor = visitor.length > 14 ? visitor.substring(0,10)+'…' : visitor;
 
         html += `
         <div class="upcoming-item">
@@ -1401,7 +1429,7 @@ function renderUpcomingMatches() {
             <span style="font-weight:bold; flex-shrink:0;">vs</span>
             <img src="${escapeAttr(getFlagUrl(visitor))}" style="width:20px;height:14px; flex-shrink:0;" alt="">
             <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHTML(visitor)}">${escapeHTML(shortVisitor)}</span>
-            <span style="font-size:0.7rem; color:#aaa; flex-shrink:0;">${escapeHTML(fase)}</span>
+            <span style="font-size:0.9rem; color:#aaa; flex-shrink:0;">${escapeHTML(fase)}</span>
         </div>`;
     }
     html += '</div>';
@@ -1413,7 +1441,46 @@ function renderUpcomingMatches() {
 
 
 
-// ==================== EVENTOS DEL PARTIDO (GOLES, TARJETAS, PENALES) ====================
+
+// ==================== CACHÉ DE EVENTOS ====================
+const EVENTS_CACHE_TIME = 60000; // 60 segundos (solo para partidos en vivo)
+
+function getCachedEvents(fixtureId) {
+    const raw = localStorage.getItem(`events_${fixtureId}`);
+    if (!raw) return null;
+    try {
+        const data = JSON.parse(raw);
+        if (!data.events) return null;
+        // Si el partido está finalizado, la caché nunca expira
+        if (["FT", "AET", "PEN"].includes(data.status)) {
+            return data.events;
+        }
+        // Si no está finalizado, expira después de EVENTS_CACHE_TIME
+        if (Date.now() - data.timestamp > EVENTS_CACHE_TIME) {
+            return null;
+        }
+        return data.events;
+    } catch (e) {
+        return null;
+    }
+}
+
+function setCachedEvents(fixtureId, events, matchStatus) {
+    try {
+        localStorage.setItem(
+            `events_${fixtureId}`,
+            JSON.stringify({
+                timestamp: Date.now(),
+                status: matchStatus || 'SCHEDULED',
+                events: events
+            })
+        );
+    } catch (e) {
+        console.warn('No se pudo guardar eventos en caché');
+    }
+}
+
+// ==================== EVENTOS DEL PARTIDO ====================
 async function showMatchEvents(matchLocalId) {
     const modal = document.getElementById('matchEventsModal');
     const body = document.getElementById('matchEventsBody');
@@ -1428,19 +1495,20 @@ async function showMatchEvents(matchLocalId) {
     const matchDateStr = match.datetime || match.date;
 
     title.textContent = `⚽ ${localHome} vs ${localAway}`;
-    body.innerHTML = '<div class="squad-loading">⏳ Buscando partido...</div>';
+    body.innerHTML = '<div class="squad-loading">⏳ Cargando eventos...</div>';
     modal.classList.add('active');
 
     let fixtureId = match.apiFootballFixtureId;
+    const isLive = (match.status === 'LIVE' || match.status === 'HT');
 
-    // Si no tenemos ID guardado, verificamos si el partido es de ayer o hoy
+    // 1. Obtener fixtureId (si no existe)
     if (!fixtureId) {
         const now = new Date();
         const matchDate = new Date(matchDateStr);
         const diffDays = Math.floor((now - matchDate) / (1000 * 60 * 60 * 24));
 
         if (diffDays > 1) {
-            body.innerHTML = '<div class="squad-empty">📭 Los eventos de este partido ya no están disponibles (API gratuita solo cubre hasta 1 día atrás).</div>';
+            body.innerHTML = '<div class="squad-empty">📭 Los eventos de este partido ya no están disponibles.</div>';
             return;
         }
 
@@ -1452,26 +1520,30 @@ async function showMatchEvents(matchLocalId) {
 
         let found = null;
         for (const d of dates) {
-            const res = await apiFootballFetch(`/fixtures?date=${d}`);
-            const data = await res.json();
+            try {
+                const res = await apiFootballFetch(`/fixtures?date=${d}`);
+                const data = await res.json();
 
-            // 🔥 DETECTAR LÍMITE EN EL CUERPO DE LA RESPUESTA (búsqueda de fixtureId)
-            if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
-                useApiFootballForLive = false;
-                apiFootballDailyCalls = 100;
-                document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
-                showToast('⚠️ Límite de peticiones API-Football alcanzado.', 'warning', 6000);
-                body.innerHTML = '<div class="squad-empty">⚠️ Límite de peticiones alcanzado. No se pueden cargar eventos.</div>';
-                return;
+                // Detectar límite
+                if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
+                    useApiFootballForLive = false;
+                    apiFootballDailyCalls = 100;
+                    document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+                    showToast('⚠️ Límite de peticiones API-Football alcanzado.', 'warning', 6000);
+                    body.innerHTML = '<div class="squad-empty">⚠️ Límite de peticiones alcanzado. No se pueden cargar eventos.</div>';
+                    return;
+                }
+
+                const fixtures = data.response || [];
+                found = fixtures.find(f => {
+                    const home = TEAM_MAP_REVERSE[f.teams.home.name] || f.teams.home.name;
+                    const away = TEAM_MAP_REVERSE[f.teams.away.name] || f.teams.away.name;
+                    return home === localHome && away === localAway;
+                });
+                if (found) break;
+            } catch (e) {
+                console.warn('Error en fecha', d, e);
             }
-
-            const fixtures = data.response || [];
-            found = fixtures.find(f => {
-                const home = TEAM_MAP_REVERSE[f.teams.home.name] || f.teams.home.name;
-                const away = TEAM_MAP_REVERSE[f.teams.away.name] || f.teams.away.name;
-                return home === localHome && away === localAway;
-            });
-            if (found) break;
         }
 
         if (!found) {
@@ -1481,47 +1553,69 @@ async function showMatchEvents(matchLocalId) {
 
         fixtureId = found.fixture.id;
         match.apiFootballFixtureId = fixtureId;
+        if (match.homeTeam) {
+            saveJSONStorage('worldcup2026_matches', currentMatches);
+        } else {
+            saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        }
     }
 
-    // 🟢 1. Intentar cargar desde caché
-    let events = getCachedEvents(fixtureId);
-    if (events && events.length > 0) {
-        // Mostrar eventos desde caché...
-        let html = '';
-        for (const e of events) {
-            const minute = e.time.elapsed + (e.time.extra ? `+${e.time.extra}` : '');
-            const player = e.player?.name || 'Desconocido';
-            const team = TEAM_MAP_REVERSE[e.team?.name] || e.team?.name || '';
-            const assist = e.assist?.name ? ` (asist. ${e.assist.name})` : '';
+    // 2. Decidir estrategia según estado del partido
+    if (isLive) {
+        // 🔴 Partido en vivo: siempre consultar API
+        try {
+            const res = await apiFootballFetch(`/fixtures/events?fixture=${fixtureId}`);
+            const data = await res.json();
 
-            if (e.type === 'Goal') {
-                const icon = e.detail === 'Penalty' ? '🥅' : '⚽';
-                html += `<div class="event-item">
-                    <span class="event-minute">${minute}'</span>
-                    <span class="event-icon">${icon}</span>
-                    <span class="event-detail">${player}${assist}</span>
-                    <span class="event-team">${team}</span>
-                </div>`;
-            } else if (e.type === 'Card') {
-                const icon = e.detail === 'Yellow Card' ? '🟨' : '🟥';
-                html += `<div class="event-item">
-                    <span class="event-minute">${minute}'</span>
-                    <span class="event-icon">${icon}</span>
-                    <span class="event-detail">${player}</span>
-                    <span class="event-team">${team}</span>
-                </div>`;
+            if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
+                useApiFootballForLive = false;
+                apiFootballDailyCalls = 100;
+                document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+                showToast('⚠️ Límite de peticiones API-Football alcanzado.', 'warning', 6000);
+                body.innerHTML = '<div class="squad-empty">⚠️ Límite de peticiones alcanzado. No se pueden cargar eventos.</div>';
+                return;
+            }
+
+            const events = data.response || [];
+            if (events.length > 0) {
+                setCachedEvents(fixtureId, events, match.status);
+                renderEventList(events, body);
+            } else {
+                // Si la API no devuelve eventos, usar caché como respaldo (si existe)
+                const cached = getCachedEvents(fixtureId);
+                if (cached && cached.length > 0) {
+                    renderEventList(cached, body);
+                    body.innerHTML += '<div style="color:#ffb347;font-size:0.8rem;margin-top:10px;">⏳ Datos en caché (el partido está en vivo, los eventos pueden estar desactualizados)</div>';
+                } else {
+                    body.innerHTML = '<div class="squad-empty">⏳ No hay eventos aún. El partido está en curso.</div>';
+                }
+            }
+        } catch (e) {
+            console.error('Error al obtener eventos en vivo:', e);
+            // Fallback: mostrar caché si existe
+            const cached = getCachedEvents(fixtureId);
+            if (cached && cached.length > 0) {
+                renderEventList(cached, body);
+                body.innerHTML += '<div style="color:#ffb347;font-size:0.8rem;margin-top:10px;">⚠️ Error al obtener eventos en vivo, mostrando datos en caché.</div>';
+            } else {
+                body.innerHTML = '<div class="squad-empty">⚠️ Error al cargar eventos. Intenta más tarde.</div>';
             }
         }
-        body.innerHTML = html || '<div class="squad-empty">📭 No hay eventos destacados.</div>';
         return;
     }
 
-    // 🔵 2. Obtener eventos desde la API
+    // 3. Partido finalizado: usar caché o API
+    const cached = getCachedEvents(fixtureId);
+    if (cached && cached.length > 0) {
+        renderEventList(cached, body);
+        return;
+    }
+
+    // No hay caché: consultar API
     try {
         const res = await apiFootballFetch(`/fixtures/events?fixture=${fixtureId}`);
         const data = await res.json();
 
-        // 🔥 DETECTAR LÍMITE EN EL CUERPO DE LA RESPUESTA (obtención de eventos)
         if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
             useApiFootballForLive = false;
             apiFootballDailyCalls = 100;
@@ -1531,66 +1625,58 @@ async function showMatchEvents(matchLocalId) {
             return;
         }
 
-        events = data.response || [];
-
-        if (!events.length) {
+        const events = data.response || [];
+        if (events.length > 0) {
+            setCachedEvents(fixtureId, events, match.status);
+            renderEventList(events, body);
+        } else {
             body.innerHTML = '<div class="squad-empty">📭 No hay eventos registrados para este partido.</div>';
-            return;
         }
-
-        setCachedEvents(fixtureId, events);
-
-        let html = '';
-        for (const e of events) {
-            const minute = e.time.elapsed + (e.time.extra ? `+${e.time.extra}` : '');
-            const player = e.player?.name || 'Desconocido';
-            const team = TEAM_MAP_REVERSE[e.team?.name] || e.team?.name || '';
-            const assist = e.assist?.name ? ` (asist. ${e.assist.name})` : '';
-
-            if (e.type === 'Goal') {
-                const icon = e.detail === 'Penalty' ? '🥅' : '⚽';
-                html += `<div class="event-item">
-                    <span class="event-minute">${minute}'</span>
-                    <span class="event-icon">${icon}</span>
-                    <span class="event-detail">${player}${assist}</span>
-                    <span class="event-team">${team}</span>
-                </div>`;
-            } else if (e.type === 'Card') {
-                const icon = e.detail === 'Yellow Card' ? '🟨' : '🟥';
-                html += `<div class="event-item">
-                    <span class="event-minute">${minute}'</span>
-                    <span class="event-icon">${icon}</span>
-                    <span class="event-detail">${player}</span>
-                    <span class="event-team">${team}</span>
-                </div>`;
-            }
-        }
-
-        body.innerHTML = html || '<div class="squad-empty">📭 No hay eventos destacados.</div>';
     } catch (e) {
-        console.error(e);
+        console.error('Error al obtener eventos:', e);
         body.innerHTML = '<div class="squad-empty">⚠️ Error al cargar eventos.</div>';
     }
 }
 
-
-function getCachedEvents(fixtureId) {
-    const raw = localStorage.getItem('events_' + fixtureId);
-    if (!raw) return null;
-    try {
-        return JSON.parse(raw);
-    } catch(e) {
-        return null;
+// ============ FUNCIÓN DE RENDERIZADO ============
+function renderEventList(events, container) {
+    if (!events || !events.length) {
+        container.innerHTML = '<div class="squad-empty">📭 No hay eventos destacados.</div>';
+        return;
     }
+    let html = '';
+    for (const e of events) {
+        const minute = e.time.elapsed + (e.time.extra ? `+${e.time.extra}` : '');
+        const player = e.player?.name || 'Desconocido';
+        const team = TEAM_MAP_REVERSE[e.team?.name] || e.team?.name || '';
+        const assist = e.assist?.name ? ` (asist. ${e.assist.name})` : '';
+
+        if (e.type === 'Goal') {
+            const icon = e.detail === 'Penalty' ? '🥅' : '⚽';
+            html += `<div class="event-item">
+                <span class="event-minute">${minute}'</span>
+                <span class="event-icon">${icon}</span>
+                <span class="event-detail">${player}${assist}</span>
+                <span class="event-team">${team}</span>
+            </div>`;
+        } else if (e.type === 'Card') {
+            const icon = e.detail === 'Yellow Card' ? '🟨' : '🟥';
+            html += `<div class="event-item">
+                <span class="event-minute">${minute}'</span>
+                <span class="event-icon">${icon}</span>
+                <span class="event-detail">${player}</span>
+                <span class="event-team">${team}</span>
+            </div>`;
+        }
+    }
+    container.innerHTML = html || '<div class="squad-empty">📭 No hay eventos destacados.</div>';
 }
 
-function setCachedEvents(fixtureId, events) {
-    try {
-        localStorage.setItem('events_' + fixtureId, JSON.stringify(events));
-    } catch(e) {
-        console.warn('No se pudo guardar eventos en caché');
-    }
-}
+
+
+
+
+
 
 
 // Cerrar modal
@@ -1697,9 +1783,17 @@ let currentKnockoutFilter = "";
 function renderFixture(editMode = false) {
 
 
- // ✅ Resolver ganadores antes de renderizar
+
+ renderKnockout(); 
+	 // ✅ Resolver ganadores antes de renderizar
     advanceKnockoutWinners();
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+	fillKnockoutSlotsFromGroups();
+    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+    renderResults(); 
+
+
+
 
     const container = document.getElementById('fixtureContainer');
     if (!container) return;
@@ -1757,7 +1851,7 @@ function renderFixture(editMode = false) {
         } else {
             html += `<td>${escapeHTML(resultado)}</td>`;
         }
-        html += `<td><a href="${escapeAttr(googleCalUrl)}" target="_blank" rel="noopener noreferrer" style="color:#ffb347;">📅</a></td></tr>`;
+        html += `<td><a href="${escapeAttr(googleCalUrl)}" target="_blank" rel="noopener noreferrer" style="color:#ffb347; font-size: 15px;">📅</a></td></tr>`;
     }
     html += '</tbody></table></div>';
     container.innerHTML = html;
@@ -2756,15 +2850,15 @@ async function fetchAllData() {
         if (!listRes.ok) {
             if (listRes.status === 429) {            // Si el límite de peticiones se ha excedido
                 consecutive429++;
-                const wait = Math.min(45000, 30000 * consecutive429);
+                const wait = Math.min(60000, 30000 * consecutive429);
                 currentInterval = wait;
-                setTimeout(() => { currentInterval = 45000; lastUpdateTime = 0; isUpdating = false; fetchAllData(); }, wait);
+                setTimeout(() => { currentInterval = 60000; lastUpdateTime = 0; isUpdating = false; fetchAllData(); }, wait);
                 return;
             }
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        currentInterval = 45000;
+        currentInterval = 60000;
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         const liveUpdated = await updateLiveMatches(apiMatches);
