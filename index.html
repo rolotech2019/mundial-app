@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '9.3';
+    var VERSION = '9.4';
     var UPDATE_NOTES = '¡ FASE ELIMINATORIA !.. Se agregaron Avisos de gol en vivo, ver eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -1314,14 +1314,17 @@ function renderKnockout() {
                 scoreHTML = `<div class="score-box"><span style="font-size:1rem; color:#ffb347;">vs</span></div>`;
             }
 
-            let statusBadge = '';
-            if (slot.status === 'LIVE') {
-                statusBadge = '<span class="status-badge live">🔴 En juego</span>';
-            } else if (slot.status === 'FINISHED') {
-                statusBadge = '<span class="status-badge">✅ Finalizado</span>';
-            } else {
-                statusBadge = '<span class="status-badge">📅 Programado</span>';
-            }
+          let statusBadge = '';
+if (slot.status === 'LIVE') {
+    const elapsedText = slot.elapsed ? ` (${slot.elapsed}')` : '';
+    statusBadge = `<span class="status-badge live">🔴 En juego${elapsedText}</span>`;
+} else if (slot.status === 'HT') {
+    statusBadge = '<span class="status-badge live">⏸️ Medio tiempo</span>';
+} else if (slot.status === 'FINISHED') {
+    statusBadge = '<span class="status-badge">✅ Finalizado</span>';
+} else {
+    statusBadge = '<span class="status-badge">📅 Programado</span>';
+}
 
             const stadiumText = slot.stadium && slot.stadium !== 'Por definir' ? slot.stadium : '';
 
@@ -1388,17 +1391,6 @@ function renderKnockout() {
 // Próximos partidos
 
 function renderUpcomingMatches() {
-
-
-
-
-  renderKnockout(); 
-	 // ✅ Resolver ganadores desde el inicio
-    advanceKnockoutWinners();
-    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-	fillKnockoutSlotsFromGroups();
-    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-
     const container = document.getElementById('upcomingContainer');
     if (!container) return;
 
@@ -1417,7 +1409,6 @@ function renderUpcomingMatches() {
         const local = m.home || m.homeTeam;
         const visitor = m.away || m.awayTeam;
 
-        // Acortar nombres largos (opcional)
         const shortLocal = local.length > 14 ? local.substring(0,10)+'…' : local;
         const shortVisitor = visitor.length > 14 ? visitor.substring(0,10)+'…' : visitor;
 
@@ -1435,7 +1426,6 @@ function renderUpcomingMatches() {
     html += '</div>';
     container.innerHTML = html;
 }
-
 
 
 
@@ -1479,6 +1469,11 @@ function setCachedEvents(fixtureId, events, matchStatus) {
         console.warn('No se pudo guardar eventos en caché');
     }
 }
+
+
+
+
+
 
 // ==================== EVENTOS DEL PARTIDO ====================
 async function showMatchEvents(matchLocalId) {
@@ -1638,6 +1633,13 @@ async function showMatchEvents(matchLocalId) {
     }
 }
 
+
+
+
+
+
+
+
 // ============ FUNCIÓN DE RENDERIZADO ============
 function renderEventList(events, container) {
     if (!events || !events.length) {
@@ -1781,27 +1783,14 @@ let currentKnockoutFilter = "";
 
 
 function renderFixture(editMode = false) {
-
-
-
- renderKnockout(); 
-	 // ✅ Resolver ganadores antes de renderizar
-    advanceKnockoutWinners();
-    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-	fillKnockoutSlotsFromGroups();
-    saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-    renderResults(); 
-
-
-
-
     const container = document.getElementById('fixtureContainer');
     if (!container) return;
-	
-	  // 🔄 Actualizar nombres de eliminatorias antes de renderizar
+
+    // Solo actualizar datos de eliminatorias (sin renderizar otras pestañas)
+    advanceKnockoutWinners();
     fillKnockoutSlotsFromGroups();
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-	
+
     let allMatches = getAllMatches();
     if (currentFixtureFilter === "__TODAY__") {
         const today = new Date();
@@ -1856,7 +1845,6 @@ function renderFixture(editMode = false) {
     html += '</tbody></table></div>';
     container.innerHTML = html;
 }
-
 
 
 
