@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '9.5';
+    var VERSION = '9.6';
     var UPDATE_NOTES = '¡ FASE ELIMINATORIA !.. Se agregaron Avisos de gol en vivo, ver eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -1199,7 +1199,9 @@ function updateSlotsFromApi(apiKnockoutMatches) {
             slot.visitor = awaySp;
             slot.homeScore = apiMatch.score?.fullTime?.home ?? apiMatch.score?.halfTime?.home ?? null;
             slot.awayScore = apiMatch.score?.fullTime?.away ?? apiMatch.score?.halfTime?.away ?? null;
-            slot.status = apiMatch.status === "FINISHED" ? "FINISHED" : (apiMatch.status === "IN_PLAY" || apiMatch.status === "LIVE" || apiMatch.status === "PAUSED" ? "LIVE" : "SCHEDULED");
+            slot.status = apiMatch.status === "FINISHED" ? "FINISHED" :
+              (apiMatch.status === "HT" ? "HT" :
+              (apiMatch.status === "IN_PLAY" || apiMatch.status === "LIVE" || apiMatch.status === "PAUSED" ? "LIVE" : "SCHEDULED"));
             if (apiMatch.venue) slot.stadium = apiMatch.venue;
         }
     }
@@ -1271,8 +1273,8 @@ function renderKnockout() {
 
         for (let slot of slots) {
             let cardClass = '';
-            if (slot.status === 'LIVE') cardClass = 'live';
-            else if (slot.status === 'FINISHED') cardClass = 'finished';
+if (slot.status === 'LIVE' || slot.status === 'HT') cardClass = 'live';
+else if (slot.status === 'FINISHED') cardClass = 'finished';
 
             const desc = slot.slot || '';
             const descParts = desc.split(' vs ');
