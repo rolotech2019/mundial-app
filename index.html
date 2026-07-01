@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '9.9';
+    var VERSION = '10.1';
     var UPDATE_NOTES = '¡ FASE ELIMINATORIA !.. Corrección de horarios, Avisos de gol en vivo, eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -645,6 +645,7 @@ function normalize(str) {
 let useApiFootballForLive = true;
 let apiFootballDailyCalls = 0;
 let lastApiFootballReset = Date.now();
+let intervalId = null;
 
 // ============ MAPEO DE NOMBRES ============
 const TEAM_MAP_REVERSE = {
@@ -2678,14 +2679,64 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
 
 
 
+// ==================== ACTUALIZACIÓN DIRECTA DEL DOM ====================
+function updateMatchCardDirectly(match) {
+    if (!match) return;
+    const id = match.id;
+    const isKnockout = match.round !== undefined; // true si es eliminatoria
 
+    // Buscar el elemento en todas las vistas posibles
+    const selector = `[data-match-id="${id}"]`;
+    const card = document.querySelector(selector);
+    if (!card) {
+        console.log(`❌ No se encontró tarjeta para ${id}`);
+        return;
+    }
+
+    // Actualizar marcador
+    const scoreElement = card.querySelector('.score');
+    if (scoreElement) {
+        // En grupos: .score contiene el marcador "2 - 1"
+        scoreElement.textContent = `${match.homeScore ?? 0} - ${match.awayScore ?? 0}`;
+    } else {
+        // En eliminatorias: .score-box .score-number
+        const scoreBox = card.querySelector('.score-box');
+        if (scoreBox) {
+            const numbers = scoreBox.querySelectorAll('.score-number');
+            if (numbers.length >= 2) {
+                numbers[0].textContent = match.homeScore ?? 0;
+                numbers[1].textContent = match.awayScore ?? 0;
+            }
+        }
+    }
+
+    // Actualizar estado (badge)
+    const statusBadge = card.querySelector('.status-badge');
+    if (statusBadge) {
+        let statusText = '📅 Programado';
+        let statusClass = '';
+        if (match.status === 'LIVE') {
+            statusText = match.elapsed ? `🟢 En juego (${match.elapsed}')` : '🟢 En juego';
+            statusClass = 'live';
+        } else if (match.status === 'HT') {
+            statusText = '⏸️ Medio tiempo';
+            statusClass = 'live';
+        } else if (match.status === 'FINISHED') {
+            statusText = '✅ Finalizado';
+        }
+        statusBadge.textContent = statusText;
+        statusBadge.className = `status-badge ${statusClass}`;
+        console.log(`✅ Tarjeta ${id} actualizada a: ${statusText}`);
+    }
+}
+
+// ==================== UPDATE LIVE MATCHES ====================
 async function updateLiveMatches(preloadedMatches = null) {
     const result = await fetchLiveWithFallback(preloadedMatches);
     if (!result.data || result.data.length === 0) return false;
     let anyUpdate = false;
     let anyKnockoutUpdate = false;
 
-    // 🔥 Función para normalizar nombres (quitar acentos, minúsculas)
     const normalize = (str) => {
         if (!str) return '';
         return str.toLowerCase()
@@ -2701,7 +2752,6 @@ async function updateLiveMatches(preloadedMatches = null) {
             let localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
             let isKnockout = false;
             
-            // 🔥 Si no está en fase de grupos, buscar en eliminatorias con comparación flexible
             if (!localMatch) {
                 localMatch = knockoutSlots.find(s => {
                     if (!s.local || !s.visitor) return false;
@@ -2710,14 +2760,13 @@ async function updateLiveMatches(preloadedMatches = null) {
                 });
                 if (localMatch) {
                     isKnockout = true;
-                    console.log(`✅ [API-Football] Encontrado en eliminatorias: ${homeSp} vs ${awaySp} → ${localMatch.local} vs ${localMatch.visitor}`);
+                    console.log(`✅ [API-Football] Encontrado en eliminatorias: ${homeSp} vs ${awaySp}`);
                 } else {
                     console.warn(`❌ [API-Football] NO encontrado: ${homeSp} vs ${awaySp}`);
                 }
             }
             
             if (localMatch) {
-                // --- PROCESAR ACTUALIZACIÓN ---
                 const st = apiMatch.fixture.status.short;
                 const elapsed = apiMatch.fixture.status.elapsed;
                 let newStatus = localMatch.status;
@@ -2771,6 +2820,7 @@ async function updateLiveMatches(preloadedMatches = null) {
                     newElapsed = elapsed || null;
                 }
 
+                // ✅ Guardar cambios
                 if (newStatus !== localMatch.status ||
                     newHome !== localMatch.homeScore ||
                     newAway !== localMatch.awayScore ||
@@ -2781,6 +2831,11 @@ async function updateLiveMatches(preloadedMatches = null) {
                     localMatch.elapsed = newElapsed;
                     anyUpdate = true;
                     if (isKnockout) anyKnockoutUpdate = true;
+
+                    // 🔥 ACTUALIZACIÓN DIRECTA DEL DOM
+                    updateMatchCardDirectly(localMatch);
+
+                    console.log(`📊 Marcador actualizado: ${localMatch.homeTeam || localMatch.local} ${newHome} - ${newAway} ${localMatch.awayTeam || localMatch.visitor}`);
                 }
             }
         }
@@ -2801,7 +2856,7 @@ async function updateLiveMatches(preloadedMatches = null) {
                 });
                 if (localMatch) {
                     isKnockout = true;
-                    console.log(`✅ [football-data] Encontrado en eliminatorias: ${homeSp} vs ${awaySp} → ${localMatch.local} vs ${localMatch.visitor}`);
+                    console.log(`✅ [football-data] Encontrado en eliminatorias: ${homeSp} vs ${awaySp}`);
                 } else {
                     console.warn(`❌ [football-data] NO encontrado: ${homeSp} vs ${awaySp}`);
                 }
@@ -2857,37 +2912,50 @@ async function updateLiveMatches(preloadedMatches = null) {
                     if (newStatus === 'FINISHED') localMatch.elapsed = null;
                     anyUpdate = true;
                     if (isKnockout) anyKnockoutUpdate = true;
+
+                    // 🔥 ACTUALIZACIÓN DIRECTA DEL DOM
+                    updateMatchCardDirectly(localMatch);
+
+                    console.log(`📊 Marcador actualizado (fallback): ${localMatch.homeTeam || localMatch.local} ${newHome} - ${newAway} ${localMatch.awayTeam || localMatch.visitor}`);
                 }
             }
         }
     }
 
+    // ✅ Guardar cambios y renderizar vistas completas (por si acaso)
     if (anyUpdate) {
         saveJSONStorage('worldcup2026_matches', currentMatches);
         saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
         if (anyKnockoutUpdate) {
             advanceKnockoutWinners();
             saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-  
-  }
-  
-     // 🔥 FORZAR ACTUALIZACIÓN INMEDIATA DE LA VISTA
-    renderGroups();   // Actualiza la pestaña de grupos (si está visible)
-    renderKnockout(); // Actualiza la pestaña de eliminatorias (si está visible)
-    if (document.getElementById('fixturePanel').style.display !== 'none') {
-        renderFixture(fixtureEditMode); // Actualiza fixture si está visible
+        }
+
+        console.log('🔄 Renderizando vistas al instante...');
+
+        // Renderizar todo para mantener coherencia
+        renderGroups();
+        renderKnockout();
+        renderUpcomingMatches();
+        if (document.getElementById('fixturePanel').style.display !== 'none') {
+            renderFixture(fixtureEditMode);
+        }
+        if (document.getElementById('resultsPanel').style.display !== 'none') {
+            renderResults();
+        }
+        if (document.getElementById('standingsPanel').style.display !== 'none') {
+            renderStandings();
+        }
+        const apiActiva = useApiFootballForLive ? 'API-Football' : 'football-data.org';
+        document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (${apiActiva})`;
+
+        console.log('✅ Vistas actualizadas.');
     }
-    if (document.getElementById('resultsPanel').style.display !== 'none') {
-        renderResults(); // Actualiza resultados si está visible
-    }
-    if (document.getElementById('standingsPanel').style.display !== 'none') {
-        renderStandings(); // Actualiza clasificación si está visible
-    }
-}
-  
 
     return anyUpdate;
 }
+
+
 
 
 
@@ -2990,6 +3058,7 @@ let consecutive429 = 0;
 let currentInterval = 60000;
 let isUpdating = false;
 
+
 async function fetchAllData() {
     if (isUpdating) return;
     const now = Date.now();
@@ -3001,7 +3070,7 @@ async function fetchAllData() {
     try {
         const listRes = await apiFetch(`/competitions/${COMPETITION_ID}/matches`);
         if (!listRes.ok) {
-            if (listRes.status === 429) {            // Si el límite de peticiones se ha excedido
+            if (listRes.status === 429) {
                 consecutive429++;
                 const wait = Math.min(60000, 30000 * consecutive429);
                 currentInterval = wait;
@@ -3011,28 +3080,33 @@ async function fetchAllData() {
             throw new Error(`HTTP ${listRes.status}`);
         }
         consecutive429 = 0;
-        currentInterval = 60000;
+        
+        // 🔥 Ajuste dinámico del intervalo según horario de partidos
+        const nuevoIntervalo = hayPartidosEnVivoAhora() ? 30000 : 60000;
+        if (nuevoIntervalo !== currentInterval) {
+            currentInterval = nuevoIntervalo;
+            if (intervalId) {
+                clearInterval(intervalId); // Reiniciar el intervalo
+            }
+            intervalId = setInterval(fetchAllData, currentInterval);
+            console.log(`⏱ Intervalo ajustado a ${currentInterval/1000} segundos`);
+        }
+
         const listData = await listRes.json();
         const apiMatches = listData.matches || [];
         const liveUpdated = await updateLiveMatches(apiMatches);
-
         const finishedUpdated = await updateFinishedMatches(apiMatches);
         const apiKnockout = apiMatches.filter(m => m.stage !== "GROUP_STAGE");
         if (apiKnockout.length > 0) {
             updateSlotsFromApi(apiKnockout);
         }
 
+        const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
+        if (allGroupFinished) {
+            fillKnockoutSlotsFromGroups();
+        }
 
-
-
-    const allGroupFinished = currentMatches.filter(m => m.group).every(m => m.status === "FINISHED");
-    if (allGroupFinished) {
-       fillKnockoutSlotsFromGroups();
- }
-		
-//	 fillKnockoutSlotsFromGroups();
-		
-		checkKnockoutPhaseChange();
+        checkKnockoutPhaseChange();
 
         const scorersUpdated = await fetchScorers();
         if (scorersUpdated && document.getElementById('scorersPanel').style.display !== 'none') renderScorers();
@@ -3043,23 +3117,17 @@ async function fetchAllData() {
             saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
             localStorage.setItem('worldcup2026_matches_ts', Date.now().toString());
         }
-		
-		
-		 // Después de guardar todos los cambios
-    if (anyUpdate) {
-        saveJSONStorage('worldcup2026_matches', currentMatches);
-        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-        advanceKnockoutWinners();        // ✅ Propagar ganadores
-        saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
-    }
-		
-		
-        renderGroups(); 
+
+        if (anyUpdate) {
+            saveJSONStorage('worldcup2026_matches', currentMatches);
+            saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+            advanceKnockoutWinners();
+            saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
+        }
+
+        renderGroups();
         renderKnockout();
-		advanceKnockoutWinners();
-		
-		
-		
+        advanceKnockoutWinners();
         renderResults();
         if (document.getElementById('fixturePanel').style.display !== 'none') renderFixture(fixtureEditMode);
         if (document.getElementById('standingsPanel').style.display !== 'none') renderStandings();
@@ -3070,12 +3138,9 @@ async function fetchAllData() {
         document.getElementById('lastUpdate').textContent = `❌ Error: ${e.message}`;
     } finally {
         isUpdating = false;
-		console.log("✅ Ciclo de actualización completo.");
-		
+        console.log("✅ Ciclo de actualización completo.");
     }
 }
-
-
 
 
 
@@ -3103,7 +3168,20 @@ async function fetchAllData() {
 	renderScorers();
     fetchAllData();
 	renderUpcomingMatches();
-    setInterval(fetchAllData, currentInterval);
+	
+	// Guardar referencia del intervalo
+intervalId = setInterval(fetchAllData, currentInterval);
+
+// 🔥 Forzar un intento de cambio a API-Football 2 segundos después de cargar
+setTimeout(() => {
+    if (hayPartidosEnVivoAhora() && apiFootballDailyCalls < 100) {
+        console.log('🔄 Forzando verificación de API-Football...');
+        useApiFootballForLive = true;
+        fetchAllData(); // Ejecuta un ciclo inmediato
+    }
+}, 2000);
+	
+ 
 	
 	
     // Toast de actualización (máx. 3 veces, por versión)
@@ -3277,4 +3355,3 @@ document.body.addEventListener('click', () => { if (!introPlayed) tryPlay(); }, 
 </script>
 </body>
 </html>
-
