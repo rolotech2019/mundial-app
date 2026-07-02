@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '10.4';
+    var VERSION = '10.5';
     var UPDATE_NOTES = 'Corrección de horarios, Cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -2929,6 +2929,7 @@ async function updateLiveMatches(preloadedMatches = null) {
                 showToast(`🏁 Finalizó ${t1} ${newHome} - ${newAway} ${t2}`, "success");
             }
 
+            // Actualizar partido de grupos
             if (localMatch) {
                 if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore || elapsed !== localMatch.elapsed) {
                     localMatch.status = newStatus;
@@ -2937,17 +2938,20 @@ async function updateLiveMatches(preloadedMatches = null) {
                     localMatch.elapsed = elapsed;
                     anyUpdate = true;
                 }
-            } else if (koSlot) {
-                if (newStatus !== koSlot.status || newHome !== koSlot.homeScore || newAway !== koSlot.awayScore) {
+            } 
+            // Actualizar partido de eliminatorias
+            else if (koSlot) {
+                if (newStatus !== koSlot.status || newHome !== koSlot.homeScore || newAway !== koSlot.awayScore || elapsed !== koSlot.elapsed) {
                     koSlot.status = newStatus;
                     koSlot.homeScore = newHome;
                     koSlot.awayScore = newAway;
+                    koSlot.elapsed = elapsed;   // ✅ AQUÍ SE ASIGNA EL MINUTO
                     anyUpdate = true;
                 }
             }
         }
     } else {
-        // football-data.org
+        // football-data.org (sin minuto)
         for (let apiMatch of result.data) {
             const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
             const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
@@ -3017,6 +3021,7 @@ async function updateLiveMatches(preloadedMatches = null) {
                     koSlot.status = newStatus;
                     koSlot.homeScore = newHome;
                     koSlot.awayScore = newAway;
+                    koSlot.elapsed = null;   // No tenemos minuto desde data.org
                     anyUpdate = true;
                 }
             }
@@ -3030,8 +3035,6 @@ async function updateLiveMatches(preloadedMatches = null) {
 
     return anyUpdate;
 }
-
-
 
 
 
