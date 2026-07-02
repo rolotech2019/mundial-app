@@ -3,8 +3,8 @@
 <head>
 <script>
   (function() {
-    var VERSION = '10.1';
-    var UPDATE_NOTES = '¡ FASE ELIMINATORIA !.. Corrección de horarios, Avisos de gol en vivo, eventos de partidos al finalizar (goles por minuto, jugador que convirtió, tarjetas), los cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
+    var VERSION = '10.2';
+    var UPDATE_NOTES = 'Corrección de horarios, Cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
 
@@ -969,73 +969,90 @@ async function renderNews() {
     // 2. Obtener noticias frescas en segundo plano
     try {
         const RSS_URL = 'https://news.google.com/rss/search?q=Mundial+2026+f%C3%BAtbol&hl=es-419&gl=US&ceid=US:es-419';
-        const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(RSS_URL);
-
-        const response = await fetch(PROXY_URL, {
-            signal: AbortSignal.timeout(10000)
-        });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-
-        const xmlText = await response.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-        const items = xmlDoc.querySelectorAll('item');
-
-        if (items.length) {
-            const parsed = [];
-            items.forEach(item => {
-                const title = item.querySelector('title')?.textContent || '';
-                const link = item.querySelector('link')?.textContent || '';
-                const pubDate = item.querySelector('pubDate')?.textContent || '';
-
-                // 🔥 Extraer miniatura de forma robusta
-                let thumbnail = '';
-                // 1. Intentar con media:thumbnail
-                const mediaThumb = item.querySelector('media\\:thumbnail');
-                if (mediaThumb) {
-                    thumbnail = mediaThumb.getAttribute('url') || '';
+        
+        // 🟢 PRIMER INTENTO: usar rss2json (devuelve JSON directamente)
+        let parsed = null;
+        try {
+            const PROXY_URL = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(RSS_URL);
+            const response = await fetch(PROXY_URL, { signal: AbortSignal.timeout(10000) });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.items && data.items.length) {
+                    parsed = data.items.map(item => ({
+                        title: item.title || '',
+                        link: item.link || '',
+                        pubDate: item.pubDate || '',
+                        thumbnail: item.thumbnail || '' // rss2json a veces incluye thumbnail
+                    }));
+                    console.log('✅ Noticias obtenidas con rss2json');
                 }
-                // 2. Si no, intentar con namespace
-                if (!thumbnail) {
-                    const thumbs = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail');
-                    if (thumbs.length > 0) {
-                        thumbnail = thumbs[0].getAttribute('url') || '';
+            } else {
+                console.warn('rss2json respondió con error:', response.status);
+            }
+        } catch (e) {
+            console.warn('rss2json falló:', e.message);
+        }
+
+        // 🟡 SEGUNDO INTENTO: si rss2json falla, usar corsproxy.io + DOMParser
+        if (!parsed) {
+            console.log('🔄 Usando corsproxy.io como fallback...');
+            const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(RSS_URL);
+            const response = await fetch(PROXY_URL, { signal: AbortSignal.timeout(10000) });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+
+            const xmlText = await response.text();
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+            const items = xmlDoc.querySelectorAll('item');
+
+            if (items.length) {
+                parsed = [];
+                items.forEach(item => {
+                    const title = item.querySelector('title')?.textContent || '';
+                    const link = item.querySelector('link')?.textContent || '';
+                    const pubDate = item.querySelector('pubDate')?.textContent || '';
+
+                    let thumbnail = '';
+                    const mediaThumb = item.querySelector('media\\:thumbnail');
+                    if (mediaThumb) {
+                        thumbnail = mediaThumb.getAttribute('url') || '';
                     }
-                }
-                // 3. Si no, buscar en description
-                if (!thumbnail) {
-                    const description = item.querySelector('description')?.textContent || '';
-                    const match = description.match(/<img[^>]+src="([^"]+)"/);
-                    if (match) thumbnail = match[1];
-                }
-                // 4. Si no, buscar en content:encoded
-                if (!thumbnail) {
-                    const content = item.querySelector('content\\:encoded')?.textContent || '';
-                    const match = content.match(/<img[^>]+src="([^"]+)"/);
-                    if (match) thumbnail = match[1];
-                }
-
-                // 🔥 Limpiar y normalizar URL de la miniatura
-                if (thumbnail) {
-                    // Si es relativa, convertir a absoluta (usando el link base)
-                    if (thumbnail.startsWith('/')) {
-                        thumbnail = 'https://news.google.com' + thumbnail;
+                    if (!thumbnail) {
+                        const thumbs = item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail');
+                        if (thumbs.length > 0) {
+                            thumbnail = thumbs[0].getAttribute('url') || '';
+                        }
                     }
-                    // Forzar HTTPS
-                    if (thumbnail.startsWith('http://')) {
-                        thumbnail = thumbnail.replace('http://', 'https://');
+                    if (!thumbnail) {
+                        const description = item.querySelector('description')?.textContent || '';
+                        const match = description.match(/<img[^>]+src="([^"]+)"/);
+                        if (match) thumbnail = match[1];
                     }
-                }
+                    if (!thumbnail) {
+                        const content = item.querySelector('content\\:encoded')?.textContent || '';
+                        const match = content.match(/<img[^>]+src="([^"]+)"/);
+                        if (match) thumbnail = match[1];
+                    }
+                    if (thumbnail) {
+                        if (thumbnail.startsWith('/')) {
+                            thumbnail = 'https://news.google.com' + thumbnail;
+                        }
+                        if (thumbnail.startsWith('http://')) {
+                            thumbnail = thumbnail.replace('http://', 'https://');
+                        }
+                    }
+                    parsed.push({ title, link, pubDate, thumbnail });
+                });
+                console.log('✅ Noticias obtenidas con corsproxy.io');
+            }
+        }
 
-                parsed.push({ title, link, pubDate, thumbnail });
-            });
-            // Guardar en caché
+        // Si obtuvimos noticias, guardar en caché y mostrar
+        if (parsed && parsed.length) {
             saveNewsCache(parsed);
             renderNewsItems(parsed, container, false);
-        } else {
-            if (!cached) {
-                container.innerHTML = '<div class="empty-message">No se encontraron noticias.</div>';
-            }
+        } else if (!cached) {
+            container.innerHTML = '<div class="empty-message">No se encontraron noticias.</div>';
         }
     } catch (e) {
         console.warn('Error obteniendo noticias:', e);
@@ -1582,11 +1599,11 @@ function renderUpcomingMatches() {
 
 
 
-
 // ==================== CACHÉ DE EVENTOS ====================
 const EVENTS_CACHE_TIME = 60000; // 60 segundos (solo para partidos en vivo)
 
 function getCachedEvents(fixtureId) {
+    if (!fixtureId) return null; // 👈 Añadir esta línea para evitar 'events_undefined'
     const raw = localStorage.getItem(`events_${fixtureId}`);
     if (!raw) return null;
     try {
@@ -1621,11 +1638,6 @@ function setCachedEvents(fixtureId, events, matchStatus) {
     }
 }
 
-
-
-
-
-
 // ==================== EVENTOS DEL PARTIDO ====================
 async function showMatchEvents(matchLocalId) {
     const modal = document.getElementById('matchEventsModal');
@@ -1644,6 +1656,25 @@ async function showMatchEvents(matchLocalId) {
     body.innerHTML = '<div class="squad-loading">⏳ Cargando eventos...</div>';
     modal.classList.add('active');
 
+    // 🔥 Si estamos usando data.org, NO hacer peticiones a API-Football
+    if (!useApiFootballForLive) {
+        // Intentar cargar desde caché primero
+        const cached = getCachedEvents(match.apiFootballFixtureId);
+        if (cached && cached.length > 0) {
+            renderEventList(cached, body);
+            body.innerHTML += '<div style="color:#ffb347;font-size:0.8rem;margin-top:10px;">📦 Datos en caché (API de respaldo activa)</div>';
+        } else {
+            body.innerHTML = `
+                <div class="squad-empty">
+                    ⚠️ Los eventos de partidos no están disponibles en este momento.<br>
+                  
+                </div>
+            `;
+        }
+        return;
+    }
+
+    // Si llegamos aquí, estamos usando API-Football (modo normal)
     let fixtureId = match.apiFootballFixtureId;
     const isLive = (match.status === 'LIVE' || match.status === 'HT');
 
@@ -1784,13 +1815,6 @@ async function showMatchEvents(matchLocalId) {
     }
 }
 
-
-
-
-
-
-
-
 // ============ FUNCIÓN DE RENDERIZADO ============
 function renderEventList(events, container) {
     if (!events || !events.length) {
@@ -1824,9 +1848,6 @@ function renderEventList(events, container) {
     }
     container.innerHTML = html || '<div class="squad-empty">📭 No hay eventos destacados.</div>';
 }
-
-
-
 
 
 
@@ -2568,6 +2589,12 @@ async function fetchTeamIds() {
 
 // ==================== ACTUALIZACIONES En juego ====================
 function hayPartidosEnVivoAhora() {
+    // 1. Verificar partidos en vivo en los datos actuales
+    const enGrupos = currentMatches?.some(m => m.status === 'LIVE' || m.status === 'HT');
+    const enEliminatorias = knockoutSlots?.some(s => s.status === 'LIVE' || s.status === 'HT');
+    if (enGrupos || enEliminatorias) return true;
+
+    // 2. Fallback: rango horario (por si el partido está por comenzar)
     const ahora = new Date();
     const bolivia = new Date(ahora.toLocaleString("en-US", { timeZone: TIMEZONE }));
     const hora = bolivia.getHours();
@@ -2575,6 +2602,9 @@ function hayPartidosEnVivoAhora() {
     const horaDecimal = hora + minutos / 60;
     return horaDecimal >= 12.0 || horaDecimal < 2.0;
 }
+
+
+
 
 
 
@@ -2586,6 +2616,7 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
         useApiFootballForLive = true;
     }
 
+    // 1. Lógica de horario (la que ya funcionaba)
     if (!hayPartidosEnVivoAhora()) {
         if (useApiFootballForLive) {
             console.log("⏰ Fuera del horario de partidos, usando football-data.org.");
@@ -2593,7 +2624,9 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
             showToast("⏰ Fuera del horario de partidos en vivo — usando football-data.org", "info", 5000);
             document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
         }
+        // Si ya está en false, no hacer nada
     } else {
+        // 2. En horario de partidos, reactivar API si no está en límite
         if (!useApiFootballForLive && apiFootballDailyCalls < 100) {
             console.log("⏰ En horario de partidos, reactivando API-Football.");
             useApiFootballForLive = true;
@@ -2602,33 +2635,33 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
         }
     }
 
+    // 3. Si está activa y hay llamadas disponibles, intentar usar API-Football
     if (useApiFootballForLive && apiFootballDailyCalls < 100 && hayPartidosEnVivoAhora()) {
         try {
             const res = await apiFootballFetch('/fixtures?live=all');
             console.log(`📡 Código de estado: ${res.status} ${res.statusText}`);
-            console.log('📋 Headers:', [...res.headers.entries()]);
 
             if (res.ok) {
                 const data = await res.json();
                 
-                // 🔥 DETECTAR LÍMITE EN EL CUERPO DE LA RESPUESTA
+                // Detectar límite en el cuerpo
                 if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
                     console.warn("⚠️ API-Football: límite de peticiones alcanzado (detectado en errors.requests). Cambiando a respaldo.");
                     useApiFootballForLive = false;
                     apiFootballDailyCalls = 100;
                     showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
                     document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
-                    // No retornamos, seguimos al fallback
                 } else if (data.response && data.response.length) {
                     apiFootballDailyCalls++;
                     const worldCupMatches = data.response.filter(m => m.league.id === 1);
                     if (worldCupMatches.length) {
                         console.log(`✅ API-Football: datos En juego obtenidos (llamada #${apiFootballDailyCalls}/100)`);
                         return { source: 'api-football', data: worldCupMatches };
+                    } else {
+                        console.log("ℹ️ API-Football: respuesta sin partidos de la liga 1 (Mundial).");
                     }
                 } else {
-                    console.log("ℹ️ API-Football: respuesta sin partidos en vivo. Usando football-data.org.");
-                    useApiFootballForLive = false;
+                    console.log("ℹ️ API-Football: respuesta sin partidos en vivo.");
                 }
             } else if (res.status === 429) {
                 console.warn("⚠️ API-Football: límite de peticiones alcanzado (429). Cambiando a respaldo.");
@@ -2637,19 +2670,19 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
                 showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
                 document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
             } else {
-                console.warn(`⚠️ API-Football: error ${res.status}, cambiando a respaldo.`);
-                useApiFootballForLive = false;
-                showToast(`⚠️ Error en API-Football (${res.status}), usando respaldo`, "warning", 5000);
-                document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+                // 🔥 ERROR TEMPORAL (500, timeout, etc.) → NO CAMBIAR A FALLBACK
+                console.warn(`⚠️ API-Football: error ${res.status} (temporal), reintentando en próximo ciclo.`);
+                // Mantenemos useApiFootballForLive = true
+                return { source: 'api-football', data: [] };
             }
         } catch(e) {
-            console.error("❌ Error en API-Football:", e);
-            useApiFootballForLive = false;
-            showToast("❌ Error al consultar API‑Football, usando respaldo", "warning", 5000);
-            document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
+            // 🔥 ERROR DE RED O TIMEOUT → NO CAMBIAR A FALLBACK
+            console.warn('⚠️ Error en API-Football (posible timeout), reintentando...');
+            return { source: 'api-football', data: [] };
         }
     }
 
+    // 4. Si llegamos aquí, usar football-data.org
     console.log("🔄 Usando football-data.org para partidos En juego.");
     if (Array.isArray(preloadedMatches)) {
         const liveMatches = preloadedMatches.filter(m =>
@@ -2729,6 +2762,13 @@ function updateMatchCardDirectly(match) {
         console.log(`✅ Tarjeta ${id} actualizada a: ${statusText}`);
     }
 }
+
+
+
+
+
+
+
 
 // ==================== UPDATE LIVE MATCHES ====================
 async function updateLiveMatches(preloadedMatches = null) {
@@ -3204,7 +3244,7 @@ setTimeout(() => {
         }
     } else {
         setTimeout(() => {
-            showToast(`⚽ ¡Bienvenido a la app del mundial 2026!`, "success", 4000);
+            showToast(`⚽ ¡El mundial se pone más interesante...!`, "success", 4000);
         }, 1500);
     }
 
