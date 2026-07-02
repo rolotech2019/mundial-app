@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '10.2';
+    var VERSION = '10.3';
     var UPDATE_NOTES = 'Corrección de horarios, Cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -2451,19 +2451,37 @@ const API_FOOTBALL_TEAM_IDS = {
   "Inglaterra": 10, "Croacia": 4, "Ghana": 37, "Panamá": 39
 };
 
+
+
+
+
 async function fetchTeamSquad(teamId, teamName) {
     const cacheKey = `team_squad_${teamId}`;
     const cached = readJSONStorage(cacheKey);
     if (Array.isArray(cached)) return cached;
+    
     let squad = [];
     try {
+        // Obtener plantilla desde football-data.org (no consume API-Football)
         const res = await apiFetch(`/teams/${teamId}`);
         if (res.ok) {
             const data = await res.json();
             squad = data.squad || [];
         }
-    } catch(e) { console.warn("Error obteniendo plantilla football-data.org"); }
+    } catch(e) {
+        console.warn("Error obteniendo plantilla de football-data.org");
+    }
+    
     if (!squad.length) return [];
+
+    // 🔥 Si estamos usando data.org, NO intentar obtener dorsales de API-Football
+    if (!useApiFootballForLive) {
+        console.log(`ℹ️ Modo data.org: dorsales no disponibles para ${teamName}`);
+        if (squad.length) saveJSONStorage(cacheKey, squad);
+        return squad;
+    }
+
+    // Intentar obtener dorsales desde API-Football (solo si estamos en modo API-Football)
     const tieneDorsales = squad.some(p => p.shirtNumber != null);
     if (!tieneDorsales && teamName) {
         const teamIdApi = API_FOOTBALL_TEAM_IDS[teamName];
@@ -2485,12 +2503,18 @@ async function fetchTeamSquad(teamId, teamName) {
                         }
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.warn(`Error obteniendo dorsales de API-Football para ${teamName}:`, e);
+            }
         }
     }
+    
     if (squad.length) saveJSONStorage(cacheKey, squad);
     return squad;
 }
+
+
+
 
 function renderSquadModal(squad, teamName) {
     const body = document.getElementById('squadModalBody');
@@ -2500,6 +2524,7 @@ function renderSquadModal(squad, teamName) {
         body.innerHTML = '<div class="squad-empty">No hay información de jugadores disponible para este equipo.</div>';
         return;
     }
+
     let html = '<table class="squad-table"><thead><tr><th>#</th><th>Jugador</th><th>Posición</th><th>Edad</th><th>Nacionalidad</th></tr></thead><tbody>';
     const sorted = [...squad].sort((a,b) => (a.shirtNumber || 999) - (b.shirtNumber || 999));
     for (let player of sorted) {
@@ -2521,8 +2546,16 @@ function renderSquadModal(squad, teamName) {
         </tr>`;
     }
     html += '</tbody></table>';
+
+    // 🔥 Mensaje si no hay dorsales (opcional)
+    const tieneDorsales = squad.some(p => p.shirtNumber != null);
+    if (!tieneDorsales && !useApiFootballForLive) {
+        html += '<div style="color:#ffb347;font-size:0.8rem;margin-top:10px;text-align:center;">⚠️ Dorsales no disponibles (API de respaldo activa)</div>';
+    }
+
     body.innerHTML = html;
 }
+
 
 function getFlagUrlByCountry(country) {
     const map = {
@@ -2543,6 +2576,8 @@ function getFlagUrlByCountry(country) {
     return code ? `https://flagcdn.com/w320/${code}.png` : '';
 }
 
+
+
 async function showTeamSquad(teamName) {
     const modal = document.getElementById('squadModal');
     const body = document.getElementById('squadModalBody');
@@ -2560,6 +2595,9 @@ async function showTeamSquad(teamName) {
     renderSquadModal(squad, teamName);
 }
 
+
+
+
 function closeSquadModal() {
     document.getElementById('squadModal').classList.remove('active');
 }
@@ -2567,6 +2605,12 @@ document.getElementById('closeSquadModalBtn').addEventListener('click', closeSqu
 document.getElementById('squadModal').addEventListener('click', function(e) {
     if (e.target === this) closeSquadModal();
 });
+
+
+
+
+
+
 
 // ==================== OBTENER IDs DE EQUIPOS ====================
 async function fetchTeamIds() {
@@ -2586,6 +2630,11 @@ async function fetchTeamIds() {
         console.log("🆔 Mapeo de IDs completado.");
     } catch(e) { console.error("❌ Error al obtener IDs de equipos:", e); }
 }
+
+
+
+
+
 
 // ==================== ACTUALIZACIONES En juego ====================
 function hayPartidosEnVivoAhora() {
