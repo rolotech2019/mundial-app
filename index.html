@@ -3,8 +3,8 @@
 <head>
 <script>
   (function() {
-    var VERSION = '10.8';
-    var UPDATE_NOTES = 'Corrección de horarios, Cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
+    var VERSION = '10.9';
+    var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
 
@@ -64,7 +64,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>⚽ Mundial 2026 - App Híbrida (API-Football + football-data.org)</title>
+    <title>⚽ Fiesta Mundial 2026</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
 /* ========== ESTILOS MUNDIAL 2026 (PALETA OFICIAL DEL BANNER) ========== */
@@ -529,10 +529,7 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 </div>
 
 <div id="fixturePanel" class="panel active" style="display: block;">
-    <div class="edit-controls">
-        <button id="editResultsBtn" class="tab-btn">✏️ Editar resultados</button>
-        <button id="saveResultsBtn" class="tab-btn" style="display:none;">💾 Guardar cambios</button>
-    </div>
+ 
     <div style="text-align:center; margin-bottom:25px;">
         <label for="fixtureTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
         <select id="fixtureTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
@@ -3285,12 +3282,12 @@ setTimeout(() => {
         } else {
             // Ya se mostró el máximo de veces → bienvenida normal
             setTimeout(() => {
-                showToast(`⚽ ¡Bienvenido a la app del mundial 2026!`, "success", 4000);
+                showToast(`🏆 ¡Cada vez más cerca de la copa...!`, "success", 4000);
             }, 1500);
         }
     } else {
         setTimeout(() => {
-            showToast(`⚽ ¡El mundial se pone más interesante...!`, "success", 4000);
+            showToast(`⚽ ¡Bienvenido a la app del mundial 2026!`, "success", 4000);
         }, 1500);
     }
 
