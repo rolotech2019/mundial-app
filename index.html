@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '10.7';
+    var VERSION = '10.8';
     var UPDATE_NOTES = 'Corrección de horarios, Cruces de siguientes fases se generan automaticamente. Corrección de petición de datos';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -2703,7 +2703,7 @@ function hayPartidosEnVivoAhora() {
     const hora = bolivia.getHours();
     const minutos = bolivia.getMinutes();
     const horaDecimal = hora + minutos / 60;
-    return horaDecimal >= 12.0 || horaDecimal < 2.0;
+    return horaDecimal >= 12.0 || horaDecimal < 1.0;
 }
 
 
@@ -3243,6 +3243,7 @@ async function fetchAllData() {
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
     renderResults(); 
     renderFixture(false); 
+	renderUpcomingMatches()
     populateTeamFilter();
     populateGroupFilter();
 	populateResultFilter();
@@ -3252,7 +3253,7 @@ async function fetchAllData() {
     await fetchScorers(); 
 	renderScorers();
     fetchAllData();
-	renderUpcomingMatches();
+	
 	
 	// Guardar referencia del intervalo
 intervalId = setInterval(fetchAllData, currentInterval);
