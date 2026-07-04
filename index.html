@@ -3,8 +3,8 @@
 <head>
 <script>
   (function() {
-    var VERSION = '10.9';
-    var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos.';
+    var VERSION = '11.0';
+    var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos, corrección de estados de partidos.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
 
@@ -646,20 +646,71 @@ let intervalId = null;
 
 // ============ MAPEO DE NOMBRES ============
 const TEAM_MAP_REVERSE = {
-    "Mexico": "México", "South Africa": "Sudáfrica", "Korea Republic": "Corea del Sur", "South Korea": "Corea del Sur",
-    "Czech Republic": "República Checa", "Czechia": "República Checa", "Canada": "Canadá", "Bosnia": "Bosnia y Herzegovina",
+    // América
+    "Mexico": "México",
+    "Canada": "Canadá",
+    "USA": "Estados Unidos",
+    "United States": "Estados Unidos",
+    "Paraguay": "Paraguay",
+    "Ecuador": "Ecuador",
+    "Brazil": "Brasil",
+    "Argentina": "Argentina",
+    "Colombia": "Colombia",
+    "Uruguay": "Uruguay",
+    "Panama": "Panamá",
+    "Haiti": "Haití",
+    "Curacao": "Curazao",
+    "Curaçao": "Curazao",
+
+    // Europa
+    "Spain": "España",
+    "Netherlands": "Países Bajos",
+    "Germany": "Alemania",
+    "Belgium": "Bélgica",
+    "Switzerland": "Suiza",
+    "France": "Francia",
+    "Portugal": "Portugal",
+    "England": "Inglaterra",
+    "Croatia": "Croacia",
+    "Scotland": "Escocia",
+    "Sweden": "Suecia",
+    "Norway": "Noruega",
+    "Austria": "Austria",
+    "Turkey": "Turquía",
+    "Czech Republic": "República Checa",
+    "Czechia": "República Checa",
+    "Bosnia": "Bosnia y Herzegovina",
     "Bosnia and Herzegovina": "Bosnia y Herzegovina",
     "Bosnia & Herzegovina": "Bosnia y Herzegovina",
-    "Bosnia-Herzegovina": "Bosnia y Herzegovina", "Qatar": "Catar", "Switzerland": "Suiza", "Brazil": "Brasil",
-    "Morocco": "Marruecos", "Haiti": "Haití", "Scotland": "Escocia", "USA": "Estados Unidos", "United States": "Estados Unidos",
-    "Paraguay": "Paraguay", "Australia": "Australia", "Turkey": "Turquía", "Germany": "Alemania", "Curacao": "Curazao",
-    "Curaçao": "Curazao", "Ivory Coast": "Costa de Marfil", "Ecuador": "Ecuador", "Netherlands": "Países Bajos",
-    "Japan": "Japón", "Sweden": "Suecia", "Tunisia": "Túnez", "Belgium": "Bélgica", "Egypt": "Egipto", "Iran": "Irán",
-    "New Zealand": "Nueva Zelanda", "Spain": "España", "Cape Verde": "Cabo Verde", "Cape Verde Islands": "Cabo Verde",
-    "Saudi Arabia": "Arabia Saudita", "Uruguay": "Uruguay", "France": "Francia", "Senegal": "Senegal", "Iraq": "Irak",
-    "Norway": "Noruega", "Argentina": "Argentina", "Algeria": "Argelia", "Austria": "Austria", "Jordan": "Jordania",
-    "Portugal": "Portugal", "Congo DR": "RD Congo", "Uzbekistan": "Uzbekistán", "Colombia": "Colombia",
-    "England": "Inglaterra", "Croatia": "Croacia", "Ghana": "Ghana", "Panama": "Panamá"
+    "Bosnia-Herzegovina": "Bosnia y Herzegovina",
+
+    // África
+    "South Africa": "Sudáfrica",
+    "Morocco": "Marruecos",
+    "Tunisia": "Túnez",
+    "Egypt": "Egipto",
+    "Senegal": "Senegal",
+    "Algeria": "Argelia",
+    "Ghana": "Ghana",
+    "Cape Verde": "Cabo Verde",
+    "Cape Verde Islands": "Cabo Verde",
+    "Ivory Coast": "Costa de Marfil",
+    "Côte d'Ivoire": "Costa de Marfil",
+    "Congo DR": "RD Congo",
+    "DR Congo": "RD Congo",
+
+    // Asia y Oceanía
+    "Korea Republic": "Corea del Sur",
+    "South Korea": "Corea del Sur",
+    "Japan": "Japón",
+    "Saudi Arabia": "Arabia Saudita",
+    "Iran": "Irán",
+    "Iraq": "Irak",
+    "Jordan": "Jordania",
+    "Qatar": "Catar",
+    "Uzbekistan": "Uzbekistán",
+    "Australia": "Australia",
+    "New Zealand": "Nueva Zelanda"
 };
 const TEAM_MAP = Object.fromEntries(Object.entries(TEAM_MAP_REVERSE).map(([k,v]) => [v, k]));
 
@@ -1296,6 +1347,8 @@ function translateSlot(slot, qualifiedMap) {
     return { local, visitor };
 }
 
+
+
 function fillKnockoutSlotsFromGroups() {
     const stats = calculateGroupStats(currentMatches);
     const groupOrder = ["A","B","C","D","E","F","G","H","I","J","K","L"];
@@ -1342,6 +1395,11 @@ function fillKnockoutSlotsFromGroups() {
 
 
 
+
+
+
+
+
 function updateSlotsFromApi(apiKnockoutMatches) {
     const STAGE_MAP_KNOCKOUT = {
         "LAST_32": "Dieciseisavos",
@@ -1358,11 +1416,15 @@ function updateSlotsFromApi(apiKnockoutMatches) {
         const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name] || apiMatch.homeTeam.name;
         const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name] || apiMatch.awayTeam.name;
 
+        // Búsqueda con normalize (por si los nombres tienen acentos o diferencias)
         const slot = knockoutSlots.find(s => {
             const sDate = new Date(s.date).getTime();
             const aDate = new Date(apiMatch.utcDate).getTime();
             const apiRound = STAGE_MAP_KNOCKOUT[apiMatch.stage] || apiMatch.stage;
-            return Math.abs(sDate - aDate) < 7200000 && s.round === apiRound;
+            // Comparar también nombres normalizados para mayor robustez
+            const localMatch = normalize(s.local) === normalize(homeSp);
+            const visitorMatch = normalize(s.visitor) === normalize(awaySp);
+            return (Math.abs(sDate - aDate) < 7200000 && s.round === apiRound) || (localMatch && visitorMatch);
         });
 
         if (slot) {
@@ -1371,32 +1433,70 @@ function updateSlotsFromApi(apiKnockoutMatches) {
             if (!slot.visitor) slot.visitor = awaySp;
             if (apiMatch.venue) slot.stadium = apiMatch.venue;
 
-            // Determinar nuevo estado desde la API
+            // ===== MAPEO COMPLETO DE ESTADOS =====
             let newStatus = "SCHEDULED";
-            if (apiMatch.status === "FINISHED" || apiMatch.status === "FT" || apiMatch.status === "AET" || apiMatch.status === "PEN") {
-                newStatus = "FINISHED";
-            } else if (apiMatch.status === "IN_PLAY" || apiMatch.status === "LIVE" || apiMatch.status === "PAUSED") {
-                newStatus = "LIVE";
-            } else if (apiMatch.status === "HT") {
-                newStatus = "HT";
+            const apiStatus = apiMatch.status;
+            switch (apiStatus) {
+                case 'FINISHED':
+                case 'FT':
+                case 'AET':
+                case 'PEN':
+                    newStatus = "FINISHED";
+                    break;
+                case 'IN_PLAY':
+                case 'LIVE':
+                case 'PAUSED':
+                    newStatus = "LIVE";
+                    break;
+                case '1H':
+                case '2H':
+                    newStatus = "LIVE";
+                    break;
+                case 'HT':
+                    newStatus = "HT";
+                    break;
+                case 'ET':
+                    newStatus = "ET";
+                    break;
+                case 'P':
+                    newStatus = "P";
+                    break;
+                case 'SUSP':
+                    newStatus = "SUSP";
+                    break;
+                case 'PST':
+                    newStatus = "PST";
+                    break;
+                case 'CANC':
+                    newStatus = "CANC";
+                    break;
+                case 'TBA':
+                    newStatus = "TBA";
+                    break;
+                default:
+                    newStatus = "SCHEDULED";
+                    break;
             }
 
             const currentStatus = slot.status;
+            // Estados que consideramos "en vivo" (no se deben sobrescribir)
+            const liveStatuses = ['LIVE', 'HT', 'ET', 'P'];
 
-            // 🔥 REGLA DE ORO: No cambiar estado si ya está en vivo, HT o finalizado
-            if (currentStatus === "LIVE" || currentStatus === "HT") {
+            // 🔥 REGLA DE ORO: No cambiar si ya está en un estado en vivo, a menos que sea FINISHED
+            if (liveStatuses.includes(currentStatus)) {
                 // Solo permitir cambiar a FINISHED si la API lo confirma
                 if (newStatus === "FINISHED") {
                     slot.status = "FINISHED";
                     slot.homeScore = apiMatch.score?.fullTime?.home ?? apiMatch.score?.halfTime?.home ?? null;
                     slot.awayScore = apiMatch.score?.fullTime?.away ?? apiMatch.score?.halfTime?.away ?? null;
+                    slot.elapsed = null;  // Limpiar elapsed al finalizar
                 } else {
-                    // Actualizar marcador parcial si viene
+                    // Actualizar marcador parcial si viene (sin tocar estado ni elapsed)
                     const newHome = apiMatch.score?.fullTime?.home ?? apiMatch.score?.halfTime?.home ?? null;
                     const newAway = apiMatch.score?.fullTime?.away ?? apiMatch.score?.halfTime?.away ?? null;
                     if (newHome !== null) slot.homeScore = newHome;
                     if (newAway !== null) slot.awayScore = newAway;
-                    // NO TOCAR el estado ni elapsed
+                    // No tocar status ni elapsed
                 }
             } else if (currentStatus === "FINISHED") {
                 // Ya finalizado, solo actualizar marcador si cambia (no debería)
@@ -1405,22 +1505,32 @@ function updateSlotsFromApi(apiKnockoutMatches) {
                 if (newHome !== null) slot.homeScore = newHome;
                 if (newAway !== null) slot.awayScore = newAway;
             } else {
-                // Estado SCHEDULED o undefined: aplicar libremente
+                // Estado SCHEDULED, SUSP, PST, CANC, TBA o undefined: aplicar libremente
                 slot.status = newStatus;
                 if (newStatus === "FINISHED") {
                     slot.homeScore = apiMatch.score?.fullTime?.home ?? apiMatch.score?.halfTime?.home ?? null;
                     slot.awayScore = apiMatch.score?.fullTime?.away ?? apiMatch.score?.halfTime?.away ?? null;
-                } else if (newStatus === "LIVE" || newStatus === "HT") {
+                    slot.elapsed = null;
+                } else if (liveStatuses.includes(newStatus)) {
                     const newHome = apiMatch.score?.fullTime?.home ?? apiMatch.score?.halfTime?.home ?? null;
                     const newAway = apiMatch.score?.fullTime?.away ?? apiMatch.score?.halfTime?.away ?? null;
                     if (newHome !== null) slot.homeScore = newHome;
                     if (newAway !== null) slot.awayScore = newAway;
+                    // No tocar elapsed (se mantiene null o el que tenga)
                 }
             }
         }
     }
     saveJSONStorage('worldcup2026_knockoutSlots', knockoutSlots);
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -1480,8 +1590,11 @@ function renderKnockout() {
 
         for (let slot of slots) {
             let cardClass = '';
-            if (slot.status === 'LIVE') cardClass = 'live';
-            else if (slot.status === 'FINISHED') cardClass = 'finished';
+            if (slot.status === 'LIVE' || slot.status === '1H' || slot.status === '2H' || slot.status === 'ET' || slot.status === 'P') {
+                cardClass = 'live';
+            } else if (slot.status === 'FINISHED' || slot.status === 'FT' || slot.status === 'AET' || slot.status === 'PEN') {
+                cardClass = 'finished';
+            }
 
             const desc = slot.slot || '';
             const descParts = desc.split(' vs ');
@@ -1509,18 +1622,25 @@ function renderKnockout() {
             const safeLocalAttr = escapeAttr(localName);
             const safeVisitorAttr = escapeAttr(visitorName);
 
-            // 🟢 CORRECCIÓN: mostrar marcador también en HT
+            // ===== MARCARDOR =====
             let scoreHTML = '';
-            if (slot.status === 'FINISHED' && slot.homeScore !== null) {
+            const hasScore = slot.homeScore !== null && slot.awayScore !== null;
+            const isFinished = (slot.status === 'FINISHED' || slot.status === 'FT' || slot.status === 'AET' || slot.status === 'PEN');
+            const isLive = (slot.status === 'LIVE' || slot.status === '1H' || slot.status === '2H' || slot.status === 'HT' || slot.status === 'ET' || slot.status === 'P');
+
+            if (isFinished && hasScore) {
                 scoreHTML = `
                     <div class="score-box">
                         <span class="score-number">${escapeHTML(slot.homeScore)}</span>
                         <span>-</span>
                         <span class="score-number">${escapeHTML(slot.awayScore)}</span>
                     </div>`;
-            } else if (slot.status === 'LIVE' || slot.status === 'HT') {
-                // Para LIVE o HT mostramos el marcador (con o sin fondo)
-                const bgStyle = slot.status === 'LIVE' ? 'style="background:#e67e22;"' : '';
+            } else if (isLive && hasScore) {
+                let bgStyle = '';
+                if (slot.status === 'LIVE' || slot.status === '1H' || slot.status === '2H') bgStyle = 'style="background:#e67e22;"';
+                else if (slot.status === 'ET') bgStyle = 'style="background:#f39c12;"';
+                else if (slot.status === 'P') bgStyle = 'style="background:#e74c3c;"';
+                else if (slot.status === 'HT') bgStyle = '';
                 scoreHTML = `
                     <div class="score-box">
                         <span class="score-number" ${bgStyle}>${escapeHTML(slot.homeScore ?? 0)}</span>
@@ -1531,19 +1651,50 @@ function renderKnockout() {
                 scoreHTML = `<div class="score-box"><span style="font-size:1rem; color:#ffb347;">vs</span></div>`;
             }
 
-            // Badge de estado (ya mostraba HT correctamente)
+            // ===== BADGE DE ESTADO =====
             let statusBadge = '';
-            if (slot.status === 'LIVE') {
-                const elapsedText = slot.elapsed ? ` (${slot.elapsed}')` : '';
-                statusBadge = `<span class="status-badge live">🔴 En juego${elapsedText}</span>`;
-            } else if (slot.status === 'HT') {
-                // Mostrar minuto si existe (suele ser 45')
-                const htMinute = slot.elapsed ? ` (${slot.elapsed}')` : '';
-                statusBadge = `<span class="status-badge live">⏸️ Medio tiempo${htMinute}</span>`;
-            } else if (slot.status === 'FINISHED') {
-                statusBadge = '<span class="status-badge">✅ Finalizado</span>';
-            } else {
-                statusBadge = '<span class="status-badge">📅 Programado</span>';
+            const elapsedText = slot.elapsed ? ` (${slot.elapsed}')` : '';
+
+            switch (slot.status) {
+                case 'LIVE':
+                case '1H':
+                case '2H':
+                    statusBadge = `<span class="status-badge live">🟢 En juego${elapsedText}</span>`;
+                    break;
+                case 'HT':
+                    statusBadge = `<span class="status-badge live">⏸️ Medio tiempo${elapsedText || ' (45\')'}</span>`;
+                    break;
+                case 'ET':
+                    statusBadge = `<span class="status-badge live" style="background:#f39c12;">🟡 Tiempo extra${elapsedText}</span>`;
+                    break;
+                case 'P':
+                    statusBadge = `<span class="status-badge live" style="background:#e74c3c;">🔴⚫ Penales${elapsedText}</span>`;
+                    break;
+                case 'FINISHED':
+                case 'FT':
+                    statusBadge = `<span class="status-badge">✅ Finalizado</span>`;
+                    break;
+                case 'AET':
+                    statusBadge = `<span class="status-badge">✅ Finalizado (T.E.)</span>`;
+                    break;
+                case 'PEN':
+                    statusBadge = `<span class="status-badge">✅ Finalizado (pen.)</span>`;
+                    break;
+                case 'SUSP':
+                    statusBadge = `<span class="status-badge" style="background:#f1c40f;">⚠️ Suspendido</span>`;
+                    break;
+                case 'PST':
+                    statusBadge = `<span class="status-badge" style="background:#f39c12;">⏳ Pospuesto</span>`;
+                    break;
+                case 'CANC':
+                    statusBadge = `<span class="status-badge" style="background:#e74c3c;">❌ Cancelado</span>`;
+                    break;
+                case 'TBA':
+                    statusBadge = `<span class="status-badge">❓ Por confirmar</span>`;
+                    break;
+                default:
+                    statusBadge = `<span class="status-badge">📅 Programado</span>`;
+                    break;
             }
 
             const stadiumText = slot.stadium && slot.stadium !== 'Por definir' ? slot.stadium : '';
@@ -1604,6 +1755,14 @@ function renderKnockout() {
         });
     });
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -2690,11 +2849,11 @@ async function fetchTeamIds() {
 // ==================== ACTUALIZACIONES En juego ====================
 function hayPartidosEnVivoAhora() {
     // 1. Verificar partidos en vivo en los datos actuales
-    const enGrupos = currentMatches?.some(m => m.status === 'LIVE' || m.status === 'HT');
-    const enEliminatorias = knockoutSlots?.some(s => s.status === 'LIVE' || s.status === 'HT');
+    const enGrupos = currentMatches?.some(m => m.status === 'LIVE' || m.status === 'HT' || m.status === 'ET' || m.status === 'P');
+    const enEliminatorias = knockoutSlots?.some(s => s.status === 'LIVE' || s.status === 'HT' || s.status === 'ET' || s.status === 'P');
     if (enGrupos || enEliminatorias) return true;
 
-    // 2. Fallback: rango horario (por si el partido está por comenzar)
+    // 2. Fallback: rango horario (12:00 - 1:00)
     const ahora = new Date();
     const bolivia = new Date(ahora.toLocaleString("en-US", { timeZone: TIMEZONE }));
     const hora = bolivia.getHours();
@@ -2716,7 +2875,6 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
         useApiFootballForLive = true;
     }
 
-    // 1. Lógica de horario (la que ya funcionaba)
     if (!hayPartidosEnVivoAhora()) {
         if (useApiFootballForLive) {
             console.log("⏰ Fuera del horario de partidos, usando football-data.org.");
@@ -2724,9 +2882,7 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
             showToast("⏰ Fuera del horario de partidos en vivo — usando football-data.org", "info", 5000);
             document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
         }
-        // Si ya está en false, no hacer nada
     } else {
-        // 2. En horario de partidos, reactivar API si no está en límite
         if (!useApiFootballForLive && apiFootballDailyCalls < 100) {
             console.log("⏰ En horario de partidos, reactivando API-Football.");
             useApiFootballForLive = true;
@@ -2735,58 +2891,59 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
         }
     }
 
-    // 3. Si está activa y hay llamadas disponibles, intentar usar API-Football
     if (useApiFootballForLive && apiFootballDailyCalls < 100 && hayPartidosEnVivoAhora()) {
         try {
             const res = await apiFootballFetch('/fixtures?live=all');
-            console.log(`📡 Código de estado: ${res.status} ${res.statusText}`);
+            console.log(`📡 Código de estado API-Football: ${res.status}`);
 
             if (res.ok) {
                 const data = await res.json();
-                
-                // Detectar límite en el cuerpo
+
                 if (data.errors && data.errors.requests && data.errors.requests.includes('limit')) {
-                    console.warn("⚠️ API-Football: límite de peticiones alcanzado (detectado en errors.requests). Cambiando a respaldo.");
+                    console.warn("⚠️ API-Football: límite de peticiones alcanzado.");
                     useApiFootballForLive = false;
                     apiFootballDailyCalls = 100;
                     showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
                     document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
                 } else if (data.response && data.response.length) {
                     apiFootballDailyCalls++;
+                    
+                    // ✅ FILTRO POR league.id === 1 
                     const worldCupMatches = data.response.filter(m => m.league.id === 1);
+                    
                     if (worldCupMatches.length) {
-                        console.log(`✅ API-Football: datos En juego obtenidos (llamada #${apiFootballDailyCalls}/100)`);
+                        console.log(`✅ API-Football: ${worldCupMatches.length} partidos del Mundial (llamada #${apiFootballDailyCalls}/100)`);
                         return { source: 'api-football', data: worldCupMatches };
                     } else {
-                        console.log("ℹ️ API-Football: respuesta sin partidos de la liga 1 (Mundial).");
+                        console.log("ℹ️ API-Football: respuesta sin partidos de la liga 1 (Mundial). Usando football-data.org como respaldo.");
+                        // ❌ NO RETORNAMOS, DEJAMOS QUE EL FLUJO CONTINÚE AL FALLBACK
                     }
                 } else {
-                    console.log("ℹ️ API-Football: respuesta sin partidos en vivo.");
+                    console.log("ℹ️ API-Football: respuesta sin partidos en vivo. Usando football-data.org.");
+                    // ❌ NO RETORNAMOS, DEJAMOS QUE EL FLUJO CONTINÚE AL FALLBACK
                 }
             } else if (res.status === 429) {
-                console.warn("⚠️ API-Football: límite de peticiones alcanzado (429). Cambiando a respaldo.");
+                console.warn("⚠️ API-Football: límite de peticiones (429). Cambiando a respaldo.");
                 useApiFootballForLive = false;
                 apiFootballDailyCalls = 100;
                 showToast("⚠️ Límite de 100 peticiones diarias de API‑Football alcanzado", "warning", 6000);
                 document.getElementById('lastUpdate').textContent = `✅ Actualizado ${new Date().toLocaleTimeString()} (football-data.org)`;
             } else {
-                // 🔥 ERROR TEMPORAL (500, timeout, etc.) → NO CAMBIAR A FALLBACK
-                console.warn(`⚠️ API-Football: error ${res.status} (temporal), reintentando en próximo ciclo.`);
-                // Mantenemos useApiFootballForLive = true
+                console.warn(`⚠️ API-Football: error ${res.status} (temporal), reintentando.`);
                 return { source: 'api-football', data: [] };
             }
-        } catch(e) {
-            // 🔥 ERROR DE RED O TIMEOUT → NO CAMBIAR A FALLBACK
+        } catch (e) {
             console.warn('⚠️ Error en API-Football (posible timeout), reintentando...');
             return { source: 'api-football', data: [] };
         }
     }
 
-    // 4. Si llegamos aquí, usar football-data.org
+    // FALLBACK: football-data.org
     console.log("🔄 Usando football-data.org para partidos En juego.");
     if (Array.isArray(preloadedMatches)) {
         const liveMatches = preloadedMatches.filter(m =>
-            m.status === "LIVE" || m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HT"
+            m.status === "LIVE" || m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HT" ||
+            m.status === "ET" || m.status === "P"
         );
         console.log(`📋 football-data.org: ${liveMatches.length} partidos En juego/HT.`);
         return { source: 'football-data', data: liveMatches };
@@ -2797,7 +2954,8 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
             const data = await res.json();
             const matches = data.matches || [];
             const liveMatches = matches.filter(m => 
-                m.status === "LIVE" || m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HT"
+                m.status === "LIVE" || m.status === "IN_PLAY" || m.status === "PAUSED" || m.status === "HT" ||
+                m.status === "ET" || m.status === "P"
             );
             console.log(`📋 football-data.org: ${liveMatches.length} partidos En juego/HT.`);
             return { source: 'football-data', data: liveMatches };
@@ -2807,7 +2965,6 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
     }
     return { source: 'fallback', data: [] };
 }
-
 
 
 
@@ -2878,19 +3035,25 @@ async function updateLiveMatches(preloadedMatches = null) {
 
     if (result.source === 'api-football') {
         for (let apiMatch of result.data) {
-            const homeSp = TEAM_MAP_REVERSE[apiMatch.teams.home.name];
-            const awaySp = TEAM_MAP_REVERSE[apiMatch.teams.away.name];
+            const homeSp = TEAM_MAP_REVERSE[apiMatch.teams.home.name] || apiMatch.teams.home.name;
+            const awaySp = TEAM_MAP_REVERSE[apiMatch.teams.away.name] || apiMatch.teams.away.name;
 
-            let localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            // ✅ Búsqueda con normalize (evita problemas con acentos)
+            let localMatch = currentMatches.find(m => 
+                normalize(m.homeTeam) === normalize(homeSp) && 
+                normalize(m.awayTeam) === normalize(awaySp)
+            );
             let koSlot = null;
             if (!localMatch) {
-                koSlot = knockoutSlots.find(s => s.local === homeSp && s.visitor === awaySp);
+                koSlot = knockoutSlots.find(s => 
+                    normalize(s.local) === normalize(homeSp) && 
+                    normalize(s.visitor) === normalize(awaySp)
+                );
                 if (!koSlot) continue;
             }
 
             const st = apiMatch.fixture.status.short;
             const elapsed = apiMatch.fixture.status.elapsed;
-            // ✅ Asegurar que los goles sean números (0 si es null)
             const newHome = apiMatch.goals.home ?? 0;
             const newAway = apiMatch.goals.away ?? 0;
 
@@ -2898,30 +3061,77 @@ async function updateLiveMatches(preloadedMatches = null) {
             const oldHome = localMatch ? (localMatch.homeScore ?? 0) : (koSlot ? (koSlot.homeScore ?? 0) : 0);
             const oldAway = localMatch ? (localMatch.awayScore ?? 0) : (koSlot ? (koSlot.awayScore ?? 0) : 0);
 
+            // ===== MAPEO COMPLETO DE ESTADOS =====
             let newStatus = oldStatus;
-            if (st === "FT" || st === "AET" || st === "PEN") newStatus = "FINISHED";
-            else if (st === "HT") newStatus = "HT";
-            else if (st === "LIVE" || st === "1H" || st === "2H") newStatus = "LIVE";
-            else newStatus = "SCHEDULED";
+            switch (st) {
+                case 'FT':
+                case 'AET':
+                case 'PEN':
+                    newStatus = 'FINISHED';
+                    break;
+                case 'HT':
+                    newStatus = 'HT';
+                    break;
+                case '1H':
+                case '2H':
+                    newStatus = 'LIVE';
+                    break;
+                case 'ET':
+                    newStatus = 'ET';
+                    break;
+                case 'P':
+                    newStatus = 'P';
+                    break;
+                case 'SUSP':
+                    newStatus = 'SUSP';
+                    break;
+                case 'PST':
+                    newStatus = 'PST';
+                    break;
+                case 'CANC':
+                    newStatus = 'CANC';
+                    break;
+                case 'TBA':
+                    newStatus = 'TBA';
+                    break;
+                default:
+                    newStatus = 'SCHEDULED';
+                    break;
+            }
 
-            // Toasts (igual que antes)
-            const wasScheduled = oldStatus === 'SCHEDULED' || oldStatus === 'HT';
-            const isNowLive = newStatus === 'LIVE' || newStatus === 'HT';
-            if (wasScheduled && isNowLive) {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
+            const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
+            const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
+
+            // ===== TOASTS =====
+            const wasScheduled = oldStatus === 'SCHEDULED' || oldStatus === 'HT' || oldStatus === 'PST' || oldStatus === 'SUSP';
+            const isNowLive = (newStatus === 'LIVE' || newStatus === 'HT' || newStatus === 'ET' || newStatus === 'P');
+
+            // Inicio del partido
+            if (wasScheduled && (newStatus === 'LIVE' || newStatus === 'HT')) {
                 showToast(`🟢 ¡Comenzó ${t1} vs ${t2}!`, "info");
             }
-            if (st === "HT" && oldStatus !== "HT") {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
+
+            // Medio tiempo
+            if (st === 'HT' && oldStatus !== 'HT') {
                 showToast(`⏸️ Medio tiempo en ${t1} vs ${t2}`, "info");
             }
-            if (st === "2H" && oldStatus === "HT") {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
+
+            // Segundo tiempo
+            if (st === '2H' && oldStatus === 'HT') {
                 showToast(`🔄 Segundo tiempo en ${t1} vs ${t2}`, "info");
             }
+
+            // Tiempo extra
+            if (st === 'ET' && oldStatus !== 'ET') {
+                showToast(`🟡 ¡Tiempo extra en ${t1} vs ${t2}!`, "warning", 5000);
+            }
+
+            // Penales
+            if (st === 'P' && oldStatus !== 'P') {
+                showToast(`🔴⚫ ¡Tanda de penales en ${t1} vs ${t2}!`, "goal", 6000);
+            }
+
+            // Goles
             if (newHome > oldHome) {
                 const team = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
                 showToast(`⚽ ¡Gol de ${team}! (${elapsed}')`, "goal");
@@ -2930,13 +3140,13 @@ async function updateLiveMatches(preloadedMatches = null) {
                 const team = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
                 showToast(`⚽ ¡Gol de ${team}! (${elapsed}')`, "goal");
             }
-            if ((st === "FT" || st === "AET" || st === "PEN") && oldStatus !== "FINISHED") {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
+
+            // Finalización
+            if ((st === 'FT' || st === 'AET' || st === 'PEN') && oldStatus !== 'FINISHED') {
                 showToast(`🏁 Finalizó ${t1} ${newHome} - ${newAway} ${t2}`, "success");
             }
 
-            // Actualizar partido de grupos
+            // ===== ACTUALIZAR =====
             if (localMatch) {
                 if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore || elapsed !== localMatch.elapsed) {
                     localMatch.status = newStatus;
@@ -2945,9 +3155,7 @@ async function updateLiveMatches(preloadedMatches = null) {
                     localMatch.elapsed = elapsed;
                     anyUpdate = true;
                 }
-            } 
-            // Actualizar partido de eliminatorias
-            else if (koSlot) {
+            } else if (koSlot) {
                 if (newStatus !== koSlot.status || newHome !== koSlot.homeScore || newAway !== koSlot.awayScore || elapsed !== koSlot.elapsed) {
                     koSlot.status = newStatus;
                     koSlot.homeScore = newHome;
@@ -2958,19 +3166,25 @@ async function updateLiveMatches(preloadedMatches = null) {
             }
         }
     } else {
-        // football-data.org
+        // ===== FOOTBALL-DATA.ORG =====
         for (let apiMatch of result.data) {
-            const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name];
-            const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name];
-            let localMatch = currentMatches.find(m => m.homeTeam === homeSp && m.awayTeam === awaySp);
+            const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name] || apiMatch.homeTeam.name;
+            const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name] || apiMatch.awayTeam.name;
+
+            let localMatch = currentMatches.find(m => 
+                normalize(m.homeTeam) === normalize(homeSp) && 
+                normalize(m.awayTeam) === normalize(awaySp)
+            );
             let koSlot = null;
             if (!localMatch) {
-                koSlot = knockoutSlots.find(s => s.local === homeSp && s.visitor === awaySp);
+                koSlot = knockoutSlots.find(s => 
+                    normalize(s.local) === normalize(homeSp) && 
+                    normalize(s.visitor) === normalize(awaySp)
+                );
                 if (!koSlot) continue;
             }
 
             const status = apiMatch.status;
-            // ✅ Asegurar números
             const newHome = (apiMatch.score.fullTime?.home ?? apiMatch.score.halfTime?.home) ?? 0;
             const newAway = (apiMatch.score.fullTime?.away ?? apiMatch.score.halfTime?.away) ?? 0;
 
@@ -2984,22 +3198,19 @@ async function updateLiveMatches(preloadedMatches = null) {
             else if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED") newStatus = "LIVE";
             else newStatus = "SCHEDULED";
 
-            // Toasts (sin minuto)
+            const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
+            const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
+
+            // ===== TOASTS (sin minuto) =====
             const wasSched = oldStatus === 'SCHEDULED' || oldStatus === 'HT';
             const nowLive = newStatus === 'LIVE' || newStatus === 'HT';
             if (wasSched && nowLive) {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
                 showToast(`🟢 ¡Comenzó ${t1} vs ${t2}!`, "info");
             }
             if (status === "HT" && oldStatus !== "HT") {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
                 showToast(`⏸️ Medio tiempo en ${t1} vs ${t2}`, "info");
             }
             if (status === "LIVE" && oldStatus === "HT") {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
                 showToast(`🔄 Segundo tiempo en ${t1} vs ${t2}`, "info");
             }
             if (newHome > oldHome) {
@@ -3011,11 +3222,10 @@ async function updateLiveMatches(preloadedMatches = null) {
                 showToast(`⚽ ¡Gol de ${team}!`, "goal");
             }
             if (newStatus === "FINISHED" && oldStatus !== "FINISHED") {
-                const t1 = localMatch ? localMatch.homeTeam : (koSlot ? koSlot.local : '');
-                const t2 = localMatch ? localMatch.awayTeam : (koSlot ? koSlot.visitor : '');
                 showToast(`🏁 Finalizó ${t1} ${newHome} - ${newAway} ${t2}`, "success");
             }
 
+            // ===== ACTUALIZAR =====
             if (localMatch) {
                 if (newStatus !== localMatch.status || newHome !== localMatch.homeScore || newAway !== localMatch.awayScore) {
                     localMatch.status = newStatus;
@@ -3056,7 +3266,8 @@ async function updateFinishedMatches(apiMatchesList) {
     let anyKnockoutUpdate = false;
 
     for (let apiMatch of apiMatchesList) {
-        if (apiMatch.status === "FINISHED") {
+        // ✅ Incluir AET y PEN como finalizados
+        if (apiMatch.status === "FINISHED" || apiMatch.status === "FT" || apiMatch.status === "AET" || apiMatch.status === "PEN") {
             const homeSp = TEAM_MAP_REVERSE[apiMatch.homeTeam.name] || apiMatch.homeTeam.name;
             const awaySp = TEAM_MAP_REVERSE[apiMatch.awayTeam.name] || apiMatch.awayTeam.name;
             
@@ -3064,7 +3275,6 @@ async function updateFinishedMatches(apiMatchesList) {
             let isKnockout = false;
             
             if (!localMatch) {
-                // Búsqueda flexible en eliminatorias
                 localMatch = knockoutSlots.find(s => {
                     if (!s.local || !s.visitor) return false;
                     return normalize(s.local) === normalize(homeSp) &&
