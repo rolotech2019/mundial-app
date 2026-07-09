@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '11.1';
+    var VERSION = '11.2';
     var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos, corrección de estados de partidos.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -2908,19 +2908,34 @@ async function fetchLiveWithFallback(preloadedMatches = null) {
                 } else if (data.response && data.response.length) {
                     apiFootballDailyCalls++;
                     
-                    // ✅ FILTRO POR league.id === 1 
-                    const worldCupMatches = data.response.filter(m => m.league.id === 1);
-                    
+                    // 🔥 FILTRO POR NOMBRES DE EQUIPOS (con normalize) en lugar de league.id
+                    const ourTeams = new Set();
+                    currentMatches.forEach(m => { ourTeams.add(m.homeTeam); ourTeams.add(m.awayTeam); });
+                    knockoutSlots.forEach(s => { if (s.local) ourTeams.add(s.local); if (s.visitor) ourTeams.add(s.visitor); });
+
+                    const worldCupMatches = data.response.filter(m => {
+                        const home = TEAM_MAP_REVERSE[m.teams.home.name] || m.teams.home.name;
+                        const away = TEAM_MAP_REVERSE[m.teams.away.name] || m.teams.away.name;
+                        const homeNorm = normalize(home);
+                        const awayNorm = normalize(away);
+                        for (let team of ourTeams) {
+                            const teamNorm = normalize(team);
+                            if (teamNorm === homeNorm || teamNorm === awayNorm) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+
                     if (worldCupMatches.length) {
                         console.log(`✅ API-Football: ${worldCupMatches.length} partidos del Mundial (llamada #${apiFootballDailyCalls}/100)`);
                         return { source: 'api-football', data: worldCupMatches };
                     } else {
-                        console.log("ℹ️ API-Football: respuesta sin partidos de la liga 1 (Mundial). Usando football-data.org como respaldo.");
-                        // ❌ NO RETORNAMOS, DEJAMOS QUE EL FLUJO CONTINÚE AL FALLBACK
+                        console.log("ℹ️ API-Football: respuesta sin partidos de nuestro torneo. Usando football-data.org como respaldo.");
+                        // NO RETORNAMOS, DEJAMOS QUE EL FLUJO CONTINÚE AL FALLBACK
                     }
                 } else {
                     console.log("ℹ️ API-Football: respuesta sin partidos en vivo. Usando football-data.org.");
-                    // ❌ NO RETORNAMOS, DEJAMOS QUE EL FLUJO CONTINÚE AL FALLBACK
                 }
             } else if (res.status === 429) {
                 console.warn("⚠️ API-Football: límite de peticiones (429). Cambiando a respaldo.");
@@ -3239,7 +3254,7 @@ async function updateLiveMatches(preloadedMatches = null) {
                     koSlot.status = newStatus;
                     koSlot.homeScore = newHome;
                     koSlot.awayScore = newAway;
-                    koSlot.elapsed = null;
+                  // koSlot.elapsed = null;
                     anyUpdate = true;
                 }
             }
@@ -3298,7 +3313,7 @@ async function updateFinishedMatches(apiMatchesList) {
 
                 if (oldStatus !== "FINISHED") {
                     localMatch.status = "FINISHED";
-                    localMatch.elapsed = null;
+                  //  localMatch.elapsed = null;
                     anyUpdate = true;
                     if (isKnockout) anyKnockoutUpdate = true;
                     
@@ -3465,17 +3480,8 @@ async function fetchAllData() {
 	// Guardar referencia del intervalo
 intervalId = setInterval(fetchAllData, currentInterval);
 
-// 🔥 Forzar un intento de cambio a API-Football 2 segundos después de cargar
-setTimeout(() => {
-    if (hayPartidosEnVivoAhora() && apiFootballDailyCalls < 100) {
-        console.log('🔄 Forzando verificación de API-Football...');
-        useApiFootballForLive = true;
-        fetchAllData(); // Ejecuta un ciclo inmediato
-    }
-}, 2000);
-	
- 
-	
+
+
 	
     // Toast de actualización (máx. 3 veces, por versión)
     const updateNotes = window.UPDATE_NOTES;
