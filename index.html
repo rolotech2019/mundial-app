@@ -3,8 +3,8 @@
 <head>
 <script>
   (function() {
-    var VERSION = '11.6';
-    var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos, corrección de estados de partidos.';
+    var VERSION = '11.7';
+    var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos, corrección de estados de partidos, agregado filtro de fases en eliminatorias.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
 
@@ -490,25 +490,45 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 
 
 <div id="groupsPanel" class="panel" style="display: none;">
-    <!-- FILTRO SOLO PARA GRUPOS -->
     <div style="text-align:center; margin-bottom:15px;">
-      <label for="groupTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
-      <select id="groupTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
-        <option value="">Todos los equipos</option>
-      </select>
+        <label for="groupTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
+        <select id="groupTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+            <option value="">Todos los equipos</option>
+        </select>
     </div>
     <div class="groups-container" id="groupsContainer">⏳ Cargando fase de grupos...</div>
 </div>
 
+<!-- ===== PANEL DE ELIMINATORIAS (SOLO UNO) ===== -->
 <div id="knockoutPanel" class="panel" style="display: none;">
-    <div style="text-align:center; margin-bottom:15px;">
-        <label for="knockoutTeamFilter" style="margin-right:0px; color:#ffb347;">🔍 Filtrar por: </label>
-        <select id="knockoutTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
-            <option value="">Todos los equipos</option>
-        </select>
+    <div style="text-align:center; margin-bottom:15px; display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">
+        <div>
+            <label for="knockoutTeamFilter" style="color:#ffb347;">🔍 Equipo: </label>
+            <select id="knockoutTeamFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+                <option value="">Todos los equipos</option>
+            </select>
+        </div>
+        <div>
+            <label for="knockoutPhaseFilter" style="color:#ffb347;">🏷️ Fase: </label>
+            <select id="knockoutPhaseFilter" style="background: rgba(0,0,0,0.5); color:#fff; border:1px solid #ffb347; border-radius:20px; padding:6px 5px; font-size:0.9rem;">
+                <option value="">Todas</option>
+                <option value="Dieciseisavos">Dieciseisavos</option>
+                <option value="Octavos">Octavos</option>
+                <option value="Cuartos">Cuartos</option>
+                <option value="Semifinales">Semifinales</option>
+                <option value="Tercer puesto">Tercer puesto</option>
+                <option value="Final">Final</option>
+            </select>
+        </div>
     </div>
     <div class="bracket-container" id="knockoutContainer">🏅 Eliminatorias...</div>
 </div>
+
+
+
+
+
+
 
 <div id="scorersPanel" class="panel" style="display: none;">
     <div class="data-container" id="scorersContainer">⏳ Cargando goleadores...</div>
@@ -527,6 +547,11 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
     </div>
     <div class="data-container" id="resultsContainer">✅ Resultados finalizados...</div>
 </div>
+
+
+
+
+
 
 <div id="fixturePanel" class="panel active" style="display: block;">
  
@@ -1558,6 +1583,12 @@ function renderKnockout() {
 
     // 1. Obtener todos los slots
     let allSlots = knockoutSlots;
+	
+	
+	// --- NUEVO: Filtrar por fase ---
+if (currentKnockoutPhaseFilter) {
+    allSlots = allSlots.filter(s => s.round === currentKnockoutPhaseFilter);
+}
 
     // 2. Aplicar filtro "Partidos de hoy"
     if (currentKnockoutFilter === "__TODAY__") {
@@ -2188,6 +2219,7 @@ let currentGroupFilter = "";
 let currentFixtureFilter = "";
 let currentResultFilter = "";
 let currentKnockoutFilter = "";
+let currentKnockoutPhaseFilter = "";
 
 
 
@@ -2223,7 +2255,7 @@ function renderFixture(editMode = false) {
         });
     }
     if (!allMatches.length) {
-        container.innerHTML = `<div class="empty-message">No hay partidos</div>`;
+        container.innerHTML = `<div class="empty-message">No hay partidos para el día de hoy</div>`;
         return;
     }
     let html = '<div class="fixture-table-wrapper"><table class="fixture-table"><thead><tr>';
@@ -2401,6 +2433,33 @@ function populateKnockoutFilter() {
         renderKnockout();
     });
 }
+
+
+
+
+
+function populateKnockoutPhaseFilter() {
+    const select = document.getElementById('knockoutPhaseFilter');
+    if (!select) return;
+    const saved = localStorage.getItem('worldcup_knockoutPhaseFilter');
+    if (saved && [...select.options].some(o => o.value === saved)) {
+        select.value = saved;
+        currentKnockoutPhaseFilter = saved;
+    } else {
+        select.value = "";
+        currentKnockoutPhaseFilter = "";
+    }
+    select.addEventListener('change', function() {
+        currentKnockoutPhaseFilter = this.value;
+        localStorage.setItem('worldcup_knockoutPhaseFilter', currentKnockoutPhaseFilter);
+        renderKnockout();
+    });
+}
+
+
+
+
+
 
 
 
@@ -3595,6 +3654,7 @@ async function fetchAllData() {
     populateGroupFilter();
 	populateResultFilter();
 	populateKnockoutFilter();
+	populateKnockoutPhaseFilter();
     renderScorers();
     renderStandings();
     await fetchScorers(); 
@@ -3623,7 +3683,7 @@ intervalId = setInterval(fetchAllData, currentInterval);
         } else {
             // Ya se mostró el máximo de veces → bienvenida normal
             setTimeout(() => {
-                showToast(`🏆 ¡Cada vez más cerca de la copa...!`, "success", 4000);
+                showToast(`🏆 ¿Quién se quedará con la copa?`, "success", 4000);
             }, 1500);
         }
     } else {
