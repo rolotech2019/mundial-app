@@ -3,7 +3,7 @@
 <head>
 <script>
   (function() {
-    var VERSION = '11.7';
+    var VERSION = '11.8';
     var UPDATE_NOTES = 'Correción de algoritmo de generación automática de cruces. Corrección de petición de datos, corrección de estados de partidos, agregado filtro de fases en eliminatorias.';
     window.UPDATE_NOTES = UPDATE_NOTES;
     window.APP_VERSION = VERSION;
@@ -296,18 +296,161 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
 .match-card .match-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.7rem; color: #aaa; }
 @keyframes subtlePulse { 0%, 100% { box-shadow: 0 0 8px rgba(213,0,50,0.3); } 50% { box-shadow: 0 0 15px rgba(213,0,50,0.6); } }
 
-/* Tarjeta del campeón */
-.champion-section { margin-top: 30px; display: flex; justify-content: center; }
-.champion-card { background: #0B1D3A; border-radius: 24px; padding: 25px 30px; text-align: center; box-shadow: 0 0 40px rgba(0,181,216,0.3); border: 2px solid #00843D; color: #fff; max-width: 500px; width: 100%; animation: championPulse 2s infinite; }
-.champion-card h2 { margin: 0 0 15px 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; color: #00B5D8; }
-.champion-card .champion-details { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; }
-.champion-card img { width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(0,0,0,0.3)); }
-.champion-card .champion-name { font-size: 2rem; font-weight: bold; color: #ffffff; }
-.champion-card .champion-stats { margin-top: 10px; font-size: 0.9rem; color: #aaaaaa; }
-@keyframes championPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+/* ========== TARJETA DEL CAMPEÓN (VERSIÓN ÉPICA) ========== */
+.champion-section {
+    margin-top: 40px;
+    display: flex;
+    justify-content: center;
+    perspective: 1000px;
+}
 
-@media (max-width: 768px) { .knockout-round { min-width: 100%; max-width: 100%; } }
-@media (max-width: 500px) { .squad-modal { max-width: 95%; } .squad-table { font-size: 0.7rem; } .squad-table td, .squad-table th { padding: 4px 2px; } }
+.champion-card {
+    background: linear-gradient(145deg, #1a1a2e, #16213e, #0f3460);
+    border-radius: 30px;
+    padding: 35px 30px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(255, 215, 0, 0.3),
+                0 20px 60px rgba(0, 0, 0, 0.7),
+                inset 0 1px 0 rgba(255, 215, 0, 0.2);
+    border: 2px solid #FFD700;
+    max-width: 550px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    transform: scale(1);
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.6s;
+    animation: championGlow 3s ease-in-out infinite alternate;
+}
+
+/* Efecto de brillo dorado animado */
+.champion-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(255, 215, 0, 0.15), transparent 60%);
+    animation: rotateGlow 12s linear infinite;
+    pointer-events: none;
+}
+
+.champion-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    padding: 3px;
+    background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700, #FFA500);
+    background-size: 300% 300%;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: borderGlow 4s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes borderGlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes rotateGlow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes championGlow {
+    0% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.2), 0 20px 60px rgba(0,0,0,0.7); }
+    100% { box-shadow: 0 0 80px rgba(255, 215, 0, 0.5), 0 30px 80px rgba(0,0,0,0.8); }
+}
+
+.champion-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 100px rgba(255, 215, 0, 0.6), 0 40px 100px rgba(0,0,0,0.9);
+}
+
+.champion-card h2 {
+    margin: 0 0 20px 0;
+    font-size: 2.2rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #FFD700;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+    position: relative;
+    z-index: 1;
+}
+
+.champion-card .champion-details {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+}
+
+.champion-card .champion-details img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.4));
+    animation: floatFlag 3s ease-in-out infinite;
+}
+
+@keyframes floatFlag {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+.champion-card .champion-name {
+    font-size: 2.8rem;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3), 0 4px 15px rgba(0,0,0,0.5);
+    letter-spacing: 2px;
+}
+
+.champion-card .champion-stats {
+    margin-top: 15px;
+    font-size: 1.1rem;
+    color: #FFD700;
+    opacity: 0.9;
+    position: relative;
+    z-index: 1;
+    background: rgba(0,0,0,0.3);
+    padding: 10px 20px;
+    border-radius: 50px;
+    display: inline-block;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .champion-card {
+        padding: 25px 20px;
+    }
+    .champion-card h2 {
+        font-size: 1.6rem;
+    }
+    .champion-card .champion-name {
+        font-size: 2rem;
+    }
+    .champion-card .champion-details img {
+        width: 60px;
+        height: 60px;
+    }
+    .champion-card .champion-stats {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+    }
+}
+
+
 
 /* Estilo del 26 + Mundial */
 .logo-text {
@@ -448,6 +591,258 @@ footer { text-align: center; margin-top: 40px; font-size: 0.7rem; opacity: 0.7; 
     font-size: 0.8rem;
     color: #aaa;
 }
+
+
+/* ============================================================
+   SEMIFINALES - ESTILO ÉPICO
+   ============================================================ */
+
+/* Contenedor de la ronda semifinal */
+.knockout-round.round-semifinal {
+    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(192,192,192,0.05) 100%);
+    border: 1px solid rgba(192,192,192,0.3);
+    box-shadow: 0 0 40px rgba(192,192,192,0.1);
+    position: relative;
+}
+
+/* Efecto de brillo sutil en el borde superior */
+.knockout-round.round-semifinal::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 10%;
+    width: 80%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #C0C0C0, transparent);
+    opacity: 0.6;
+}
+
+/* Tarjetas de semifinales */
+.knockout-round.round-semifinal .match-card {
+    background: rgba(255,255,255,0.08);
+    border: none !important;
+    border-left: 4px solid #C0C0C0 !important;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Fondo con degradado sutil al hacer hover */
+.knockout-round.round-semifinal .match-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(192,192,192,0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+    border-radius: 16px;
+}
+
+.knockout-round.round-semifinal .match-card:hover::after {
+    opacity: 1;
+}
+
+.knockout-round.round-semifinal .match-card:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 12px 48px rgba(192,192,192,0.25);
+}
+
+/* Mantener el borde izquierdo para estados live/finished */
+.knockout-round.round-semifinal .match-card.live {
+    border-left-color: #D50032 !important;
+}
+
+.knockout-round.round-semifinal .match-card.finished {
+    border-left-color: #00843D !important;
+}
+
+/* ============================================================
+   FINAL - ESTILO ÉPICO (BRUTAL)
+   ============================================================ */
+
+/* Contenedor de la final */
+.knockout-round.round-final {
+    background: radial-gradient(circle at center, rgba(255,215,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+    border: 2px solid #FFD700;
+    box-shadow: 0 0 60px rgba(255,215,0,0.15), inset 0 0 60px rgba(255,215,0,0.03);
+    position: relative;
+    max-width: 520px;
+    margin: 0 auto;
+    border-radius: 24px;
+    padding: 20px 18px;
+}
+
+/* Línea brillante superior dorada */
+.knockout-round.round-final::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 5%;
+    width: 90%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #FFD700, #FFA500, #FFD700, transparent);
+    background-size: 200% 100%;
+    animation: shimmerGold 3s linear infinite;
+}
+
+@keyframes shimmerGold {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Efecto de brillo rotatorio (opcional, muy épico) */
+.knockout-round.round-final::after {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: radial-gradient(circle at center, rgba(255,215,0,0.05) 0%, transparent 70%);
+    animation: rotateGlow 20s linear infinite;
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+@keyframes rotateGlow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Título de la final */
+.knockout-round.round-final h3 {
+    font-size: 2rem;
+    color: #FFD700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.4);
+    letter-spacing: 4px;
+    border-bottom: 2px solid #FFD700;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Tarjeta de la final */
+.knockout-round.round-final .match-card {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    border: 2px solid #FFD700 !important;
+    border-radius: 20px;
+    padding: 20px 18px;
+    box-shadow: 0 0 40px rgba(255,215,0,0.15), 0 8px 40px rgba(0,0,0,0.5);
+    transform: scale(1.04);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Fondo dorado sutil al hacer hover */
+.knockout-round.round-final .match-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,215,0,0.1), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.6s;
+    pointer-events: none;
+    border-radius: 20px;
+}
+
+.knockout-round.round-final .match-card:hover::before {
+    opacity: 1;
+}
+
+.knockout-round.round-final .match-card:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 60px rgba(255,215,0,0.3), 0 12px 60px rgba(0,0,0,0.6);
+}
+
+/* Equipos en la final */
+.knockout-round.round-final .match-card .team-row {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.knockout-round.round-final .match-card .team-row img {
+    width: 32px;
+    height: 22px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Marcador en la final */
+.knockout-round.round-final .match-card .score-box {
+    font-size: 2rem;
+    margin: 12px 0;
+}
+
+.knockout-round.round-final .match-card .score-box .score-number {
+    background: rgba(0,0,0,0.7);
+    padding: 6px 28px;
+    border-radius: 40px;
+    border: 1px solid #FFD700;
+    color: #FFD700;
+    font-weight: 700;
+    text-shadow: 0 0 20px rgba(255,215,0,0.3);
+    box-shadow: 0 0 20px rgba(255,215,0,0.1);
+}
+
+/* Badge de estado en la final */
+.knockout-round.round-final .match-card .status-badge {
+    font-size: 0.85rem;
+    padding: 4px 16px;
+    border-radius: 30px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Cuando la final está en vivo */
+.knockout-round.round-final .match-card.live {
+    border-color: #FFD700 !important;
+    box-shadow: 0 0 60px rgba(255,215,0,0.3), 0 0 80px rgba(213,0,50,0.2);
+}
+
+/* Cuando la final ha terminado */
+.knockout-round.round-final .match-card.finished {
+    border-color: #FFD700 !important;
+    box-shadow: 0 0 40px rgba(255,215,0,0.2);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+    .knockout-round.round-final {
+        padding: 14px 10px;
+        max-width: 100%;
+    }
+    .knockout-round.round-final h3 {
+        font-size: 1.5rem;
+        gap: 8px;
+    }
+    .knockout-round.round-final .match-card {
+        transform: scale(1);
+        padding: 14px 12px;
+    }
+    .knockout-round.round-final .match-card:hover {
+        transform: scale(1.02);
+    }
+    .knockout-round.round-final .match-card .team-row {
+        font-size: 1rem;
+    }
+    .knockout-round.round-final .match-card .score-box {
+        font-size: 1.5rem;
+    }
+    .knockout-round.round-final .match-card .score-box .score-number {
+        padding: 4px 16px;
+    }
+}
+
 
 </style>
 </head>
@@ -1628,7 +2023,15 @@ if (currentKnockoutPhaseFilter) {
         let slots = allSlots.filter(s => s.round === round);
         if (slots.length === 0) continue;
 
-        html += `<div class="knockout-round"><h3>${round}</h3>`;
+let roundClass = '';
+if (round === 'Semifinales') roundClass = ' round-semifinal';
+if (round === 'Final') roundClass = ' round-final';
+
+let roundTitle = round;
+if (round === 'Final') roundTitle = '🏆 Final';
+
+html += `<div class="knockout-round${roundClass}"><h3>${roundTitle}</h3>`;
+
 
         for (let slot of slots) {
             let cardClass = '';
